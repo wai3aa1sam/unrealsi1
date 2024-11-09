@@ -7,11 +7,8 @@ UursGameInstance::OnStart()
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(0, 2, FColor::Red, "ursGameInstance::OnStart()");
-
-		#if URS_CORE
-		GEngine->AddOnScreenDebugMessage(0, 2, FColor::Red, "URS_CORE");
-		#endif
+		//GEngine->AddOnScreenDebugMessage(0, 2, FColor::Red, "ursGameInstance::OnStart()");
+		URS_LOG("ursGameInstance::OnStart()");
 	}
 }
 
