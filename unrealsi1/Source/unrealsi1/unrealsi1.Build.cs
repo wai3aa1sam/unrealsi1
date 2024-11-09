@@ -38,7 +38,7 @@ public class unrealsi1 : ModuleRules
 
         PrivateIncludePaths.Add("unrealsi1/external");
 
-        PrivateIncludePaths.Add("unrealsi1/core");
+        PrivateIncludePaths.Add("unrealsi1/tutorial/src");
         PrivateIncludePaths.Add("unrealsi1/core/src");
     }
 }
