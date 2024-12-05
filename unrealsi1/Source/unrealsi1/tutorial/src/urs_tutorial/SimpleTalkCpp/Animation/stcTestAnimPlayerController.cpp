@@ -66,22 +66,22 @@ void AstcTestAnimPlayerController::OnInputAxis_MoveRight(float value) {
 }
 
 void AstcTestAnimPlayerController::OnInputAxis_Turn(float value) {
-	URS_LOG_INLINE(1, "OnInputAxis_Turn: {}", value);
+	URS_LOG_INLINE("OnInputAxis_Turn: {}", value);
 	AddYawInput(value);
 }
 
 void AstcTestAnimPlayerController::OnInputAxis_TurnRate(float value) {
-	URS_LOG_INLINE(2, "OnInputAxis_TurnRate: {}", value);
+	URS_LOG_INLINE("OnInputAxis_TurnRate: {}", value);
 	AddYawInput(value * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
 void AstcTestAnimPlayerController::OnInputAxis_Lookup(float value) {
-	URS_LOG_INLINE(3, "OnInputAxis_Lookup: {}", value);
+	URS_LOG_INLINE("OnInputAxis_Lookup: {}", value);
 	AddPitchInput(value);
 }
 
 void AstcTestAnimPlayerController::OnInputAxis_LookupRate(float value) {
-	URS_LOG_INLINE(4, "OnInputAxis_LookupRate: {}", value);
+	URS_LOG_INLINE("OnInputAxis_LookupRate: {}", value);
 	AddPitchInput(value * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 

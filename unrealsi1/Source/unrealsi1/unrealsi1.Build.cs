@@ -14,6 +14,7 @@ public class unrealsi1 : ModuleRules
 			"Slate",		   
 			"SlateCore",	   
             "ApplicationCore",
+            "RenderCore",
 		// --- Default ---
 			"Core",
             "CoreUObject",

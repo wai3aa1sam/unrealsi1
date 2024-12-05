@@ -29,7 +29,7 @@ void AstcTestPlayerController::Tick(float DeltaSeconds) {
 
 	//	auto* Game = GetWorld()->GetGameInstanceChecked<UMyLesson004_GameInstance>();
 
-	URS_LOG_INLINE(1, "InputDirection {}", InputDirection);
+	URS_LOG_INLINE("InputDirection {}", InputDirection);
 	/*if (GEngine) {
 		FString msg = ursFormat("InputDirection {}", InputDirection);
 		GEngine->AddOnScreenDebugMessage(1, 2, FColor::Purple, msg);
