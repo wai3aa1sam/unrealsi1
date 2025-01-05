@@ -10,6 +10,11 @@ public class unrealsi1EditorTarget : TargetRules
 		Type = TargetType.Editor;
 		DefaultBuildSettings	= BuildSettingsVersion.Latest;
 		IncludeOrderVersion		= EngineIncludeOrderVersion.Latest;
-		ExtraModuleNames.Add("unrealsi1");
-	}
+		ExtraModuleNames.AddRange( new string[] 
+		{
+            "unrealsi1",
+            "urs_core",
+            "urs_test_module",
+        });
+    }
 }

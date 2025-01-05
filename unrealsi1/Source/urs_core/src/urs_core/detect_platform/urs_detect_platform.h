@@ -9,6 +9,5 @@
 	__pragma(warning(pop)) \
 // ---
 
-
 #define	URS_FUNC_NAME_SZ			__FUNCTION__
 #define URS_FUNC_FULLNAME_SZ		__FUNCSIG__

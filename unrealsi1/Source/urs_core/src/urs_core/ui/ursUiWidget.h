@@ -13,7 +13,7 @@
 #if 1
 
 UCLASS()
-class UursUiWidget : public UUserWidget
+class UNREALSI1_API UursUiWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:

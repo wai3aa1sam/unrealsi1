@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../detect_platform/urs_detect_platform.h"
+#include "urs_core/marco/urs_core_marco_common.h"
 
 #define FMT_HEADER_ONLY 1
 
 URS_DISABLE_ALL_WARNINGS()
-#include <external/fmt/core.h>
+#include <fmt/core.h>
 
 /*
 ~ reference:

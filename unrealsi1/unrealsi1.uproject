@@ -8,7 +8,12 @@
 			"Name": "unrealsi1",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		}
+		},
+		{
+			"Name": "urs_core",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
 	],
 	"Plugins": [
 		{
@@ -19,13 +24,12 @@
 			]
 		},
 		{
-			"Name": "urs_shader",
-			"Enabled": true
-		}
-		,
-		{
 			"Name": "urs_test_plugin",
 			"Enabled": false
+		},
+		{
+			"Name": "urs_shader",
+			"Enabled": true
 		}
 	]
 }

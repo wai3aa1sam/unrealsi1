@@ -2,6 +2,10 @@
 
 #include "../detect_platform/urs_detect_platform.h"
 
+#ifndef UNREALSI1_API
+	#define UNREALSI1_API DLLEXPORT
+#endif // !UNREALSI1_API
+
 #define URS_FILE __FILE__
 #define URS_LINE __LINE__
 #define URS_FUNC URS_FUNC_NAME_SZ

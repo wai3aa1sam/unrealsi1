@@ -10,6 +10,11 @@ public class unrealsi1Target : TargetRules
 		Type = TargetType.Game;
 		DefaultBuildSettings	= BuildSettingsVersion.Latest;
 		IncludeOrderVersion		= EngineIncludeOrderVersion.Latest;
-		ExtraModuleNames.Add("unrealsi1");
-	}
+        ExtraModuleNames.AddRange(new string[] 
+        {
+            //"urs_test_module",
+            "unrealsi1",
+            "urs_core",
+        });
+    }
 }

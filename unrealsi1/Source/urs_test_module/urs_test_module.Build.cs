@@ -3,16 +3,16 @@
 using System.IO;
 using UnrealBuildTool;
 
-public class unrealsi1 : ModuleRules
+public class urs_test_module : ModuleRules
 {
-	public unrealsi1(ReadOnlyTargetRules Target) : base(Target)
+	public urs_test_module(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
 		PublicDependencyModuleNames.AddRange(new string[] 
 		{
 		// --- urs ---
-            "urs_core",
+            //"urs_core",
 		// --- unreal ---
             "UMG",			   
 			"Slate",		   
@@ -40,14 +40,12 @@ public class unrealsi1 : ModuleRules
 
         // To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
 
-        string rootDir = "";
-        PublicIncludePaths.AddRange(new string[]
-        {
-            Path.Combine(rootDir, "unrealsi1"),
-            Path.Combine(rootDir, "unrealsi1/tutorial/src"),
-            Path.Combine(rootDir, "unrealsi1/game/app/src"),
-
-            Path.Combine(rootDir, "urs_core/src"),
-        });
+        //string rootDir = "";
+        //PublicIncludePaths.AddRange(new string[]
+        //{
+        //    Path.Combine(rootDir, "external"),
+        //    Path.Combine(rootDir, "urs_core"),
+        //    Path.Combine(rootDir, "urs_core/src"),
+        //});
     }
 }

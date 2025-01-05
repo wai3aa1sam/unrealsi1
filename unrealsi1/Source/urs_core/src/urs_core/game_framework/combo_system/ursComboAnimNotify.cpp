@@ -1,10 +1,5 @@
 #include "ursComboAnimNotify.h"
 
-/*
-* temporary
-*/
-#include "urs_game_app/demo/test/action/tadCharacter.h"
-
 #if 0
 #pragma mark --- UursComboExecution_AnimNotify-Impl ---
 #endif // 0
@@ -15,10 +10,10 @@ UursComboBlockState_AnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSe
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 	if (!MeshComp) return;
-	auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
+	/*auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
 	if (!ch) return;
 
-	ch->comboSystem().setComboSystemState(EursComboSystemState::Block);
+	ch->comboSystem().setComboSystemState(EursComboSystemState::Block);*/
 }
 
 #endif
@@ -33,10 +28,10 @@ UursComboCommitState_AnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimS
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 	if (!MeshComp) return;
-	auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
+	/*auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
 	if (!ch) return;
 	
-	ch->comboSystem().setComboSystemState(EursComboSystemState::Commit);
+	ch->comboSystem().setComboSystemState(EursComboSystemState::Commit);*/
 }
 
 #endif
@@ -51,10 +46,10 @@ UursComboResetState_AnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSe
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 	if (!MeshComp) return;
-	auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
+	/*auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
 	if (!ch) return;
 
-	ch->comboSystem().setComboSystemState(EursComboSystemState::Reset);
+	ch->comboSystem().setComboSystemState(EursComboSystemState::Reset);*/
 }
 
 #endif
@@ -69,10 +64,10 @@ UursCombo_AnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSe
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	if (!MeshComp) return;
-	auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
+	/*auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
 	if (!ch) return;
 
-	ch->comboSystem().comboBegin();
+	ch->comboSystem().comboBegin();*/
 }
 
 void 
@@ -80,8 +75,8 @@ UursCombo_AnimNotifyState::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeq
 {
 	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
 	if (!MeshComp) return;
-	auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
-	if (!ch) return;
+	/*auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
+	if (!ch) return;*/
 
 	//ch->Controller
 	//ch->comboSystem().comboUpdate(FrameDeltaTime);
@@ -92,10 +87,10 @@ UursCombo_AnimNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequ
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 	if (!MeshComp) return;
-	auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
+	/*auto* ch = Cast<AtadCharacter>(MeshComp->GetOwner());
 	if (!ch) return;
 
-	ch->comboSystem().comboEnd();
+	ch->comboSystem().comboEnd();*/
 }
 
 #endif

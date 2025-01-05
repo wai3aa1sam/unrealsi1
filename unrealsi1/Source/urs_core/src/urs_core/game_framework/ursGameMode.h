@@ -13,7 +13,7 @@
 #if 1
 
 UCLASS()
-class AursGameMode : public AGameModeBase
+class UNREALSI1_API AursGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 public:
