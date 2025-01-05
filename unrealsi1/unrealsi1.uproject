@@ -19,8 +19,13 @@
 			]
 		},
 		{
-			"Name": "urs_test_plugin",
+			"Name": "urs_shader",
 			"Enabled": true
+		}
+		,
+		{
+			"Name": "urs_test_plugin",
+			"Enabled": false
 		}
 	]
 }

@@ -1,0 +1,25 @@
+#pragma once
+
+/*
+reference:
+~ https://github.com/nfgrep/CustomComputeExample
+*/
+
+#include "/Engine/Public/Platform.ush"
+
+StructuredBuffer<float3> Vertices;
+RWTexture2D<float4> OutputTexture;
+
+[numthreads(32, 32, 1)]
+void MainCompute(uint3 ThreadId : SV_DispatchThreadID)
+{
+    // Take the first vertex and normalize it
+    float3 Vert = normalize(Vertices[0]);
+    // Use it as this pixel's colour
+    float3 color = float3(Vert.x, Vert.y, Vert.z);
+    OutputTexture[ThreadId.xy] = float4(color, 1);
+    //OutputTexture[ThreadId.xy] = float4(1.0, 0.5, 1.0, 1.0);
+    //OutputTexture[ThreadId.xy] = float4(0.749, 0.6594, 0.59949, 1.0);
+    //OutputTexture[ThreadId.xy] = float4(color.x, 0.0, 0.0, 1.0);
+    
+}

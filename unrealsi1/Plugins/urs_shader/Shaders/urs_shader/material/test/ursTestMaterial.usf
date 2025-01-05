@@ -1,0 +1,20 @@
+
+#include "/Engine/Public/Platform.ush"
+
+struct ursMaterial
+{
+    float3 output(FMaterialPixelParameters Parameters
+                , MaterialFloat4 inColor
+                , Texture2D inTex, SamplerState inTexSampler
+                )
+    {
+        const float2 uv = GetSceneTextureUV(Parameters);
+
+        float3 color = Texture2DSample(inTex, inTexSampler, uv).rgb;
+        
+        return inColor.xyz * color;
+    }
+};
+
+ursMaterial ursMat;
+#define URS_MATERIAL_RETURN return ursMat.output(Parameters, inColor, inTex, inTexSampler);
