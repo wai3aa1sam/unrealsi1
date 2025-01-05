@@ -5,7 +5,7 @@ reference:
 ~ https://github.com/nfgrep/CustomComputeExample
 */
 
-//#include "urs_game_app/common/urs_game_app_common.h"
+#include "urs_shader/common/urs_shader_common.h"
 
 #include "trgActor.generated.h"
 

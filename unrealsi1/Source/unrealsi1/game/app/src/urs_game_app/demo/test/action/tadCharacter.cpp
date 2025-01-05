@@ -70,6 +70,8 @@ void AtadCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	//comboSystem().update(DeltaSeconds, this);
+
+	URS_LOG("TEST");
 }
 
 void 

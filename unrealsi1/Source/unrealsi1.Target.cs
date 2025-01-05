@@ -15,6 +15,7 @@ public class unrealsi1Target : TargetRules
             //"urs_test_module",
             "unrealsi1",
             "urs_core",
+            "urs_shader",
         });
     }
 }

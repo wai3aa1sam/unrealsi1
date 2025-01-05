@@ -1,6 +1,8 @@
 #include "trgActor.h"
 #include "trgTestComputeShader.h"
 
+#include <urs_core/common/ursLog.h>
+
 AtrgActor::AtrgActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -43,11 +45,11 @@ AtrgActor::Tick(float DeltaTime)
 	if (vertices.Num() > 0)
 	{
 		auto vertex = vertices[0];
-		FString str = FString::Printf(TEXT("- before normalize vertices[0]=[%f, %f, %f]"), vertex.X, vertex.Y, vertex.Z);
-
 		vertex.Normalize();
-		str = FString::Printf(TEXT("- after normalize vertices[0]=[%f, %f, %f]"), vertex.X, vertex.Y, vertex.Z);
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, str);
+
+		URS_LOG_INLINE("urs_log: vertex: {}", vertex);
+		//String str = FString::Printf(TEXT("- after normalize vertices[0]=[%f, %f, %f]"), vertex.X, vertex.Y, vertex.Z);
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, str);
 	}
 	enqueueRenderCommand(RenderTarget, vertices);
 }

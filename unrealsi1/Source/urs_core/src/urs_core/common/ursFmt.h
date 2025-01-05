@@ -142,17 +142,24 @@ struct fmt::formatter<FText> : fmt::formatter<FString> {
 	}
 };
 
-template<>
-struct fmt::formatter<FVector2D> : public ursFormatterBase {
-	auto format(const FVector2D& v, fmt::format_context& ctx) const {
+template<class T>
+struct fmt::formatter<UE::Math::TVector2<T> > : public ursFormatterBase {
+	auto format(const UE::Math::TVector2<T>& v, fmt::format_context& ctx) const {
 		return fmt::format_to(ctx.out(), "[{}, {}]", v.X, v.Y);
 	}
 };
 
-template<>
-struct fmt::formatter<FVector> : public ursFormatterBase {
-	auto format(const FVector& v, fmt::format_context& ctx) const {
+template<class T>
+struct fmt::formatter<UE::Math::TVector<T> > : public ursFormatterBase {
+	auto format(const UE::Math::TVector<T>& v, fmt::format_context& ctx) const {
 		return fmt::format_to(ctx.out(), "[{}, {}, {}]", v.X, v.Y, v.Z);
+	}
+};
+
+template<class T>
+struct fmt::formatter<UE::Math::TVector4<T> > : public ursFormatterBase {
+	auto format(const UE::Math::TVector4<T>& v, fmt::format_context& ctx) const {
+		return fmt::format_to(ctx.out(), "[{}, {}, {}, {}]", v.X, v.Y, v.Z, v.W);
 	}
 };
 
@@ -160,13 +167,6 @@ template<>
 struct fmt::formatter<FVector_NetQuantize> : public fmt::formatter<FVector> {
 	auto format(const FVector_NetQuantize& v, fmt::format_context& ctx) const {
 		return fmt::formatter<FVector>::format(v, ctx);
-	}
-};
-
-template<>
-struct fmt::formatter<FVector4> : public ursFormatterBase {
-	auto format(const FVector4& v, fmt::format_context& ctx) const {
-		return fmt::format_to(ctx.out(), "[{}, {}, {}, {}]", v.X, v.Y, v.Z, v.W);
 	}
 };
 

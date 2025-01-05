@@ -12,7 +12,9 @@ struct ursMaterial
 
         float3 color = Texture2DSample(inTex, inTexSampler, uv).rgb;
         
-        return inColor.xyz * color;
+        float3 o = inColor.xyz * color;
+        //o.r = 1;
+        return o;
     }
 };
 

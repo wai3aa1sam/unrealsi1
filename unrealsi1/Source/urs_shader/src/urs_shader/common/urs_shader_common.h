@@ -7,3 +7,5 @@
 #define URS_MATERIAL_ROOT_CSTR	"/urs_material"
 
 #include <CoreMinimal.h>
+
+#include <urs_core.h>

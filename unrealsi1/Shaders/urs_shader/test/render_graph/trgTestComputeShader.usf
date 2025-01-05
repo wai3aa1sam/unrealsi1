@@ -17,6 +17,7 @@ void MainCompute(uint3 ThreadId : SV_DispatchThreadID)
     float3 Vert = normalize(Vertices[0]);
     // Use it as this pixel's colour
     float3 color = float3(Vert.x, Vert.y, Vert.z);
+    //color.r = 1;
     OutputTexture[ThreadId.xy] = float4(color, 1);
     //OutputTexture[ThreadId.xy] = float4(1.0, 0.5, 1.0, 1.0);
     //OutputTexture[ThreadId.xy] = float4(0.749, 0.6594, 0.59949, 1.0);
