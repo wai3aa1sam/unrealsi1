@@ -1,0 +1,12 @@
+#pragma once
+
+#include "/Engine/Public/Platform.ush"
+
+#define URS_TEXTURE_2D(name)                    Texture2D name, SamplerState name ## Sampler, float4 name ## _ST
+#define URS_TEXTURE_2D_ARGS(name)               name, name ## Sampler, name ## _ST
+#define URS_TRANSFORM_UV(uv, texName)           uv.xy * texName ## _ST.xy + texName ## _ST.zw
+#define URS_TEXTURE_2D_SAMPLE(texName, uv)      Texture2DSample(texName, texName ## Sampler, uv)
+
+#define Color4f float4
+
+static const float urs_epsilon = 0.000001;

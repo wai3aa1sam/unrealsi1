@@ -1,0 +1,77 @@
+
+#include "/urs_shader/common/urs_shader_common.ush"
+
+#define PS_MAIN ps_main
+
+FMaterialAttributes 
+ps_main(FMaterialPixelParameters Parameters
+                // , Texture2D fadeInTex, SamplerState fadeInTexSampler
+                // , Texture2D fadeOutTex, SamplerState fadeOutTexSampler
+                // , Texture2D maskTex, SamplerState maskTexSampler
+                , float2 _uv
+                , URS_TEXTURE_2D(_fadeInTex)
+                , URS_TEXTURE_2D(_fadeOutTex)
+                , URS_TEXTURE_2D(_maskTex)
+                , float _dissolve
+                , float2 _pivot
+                , float _edgeWidth, float _edgeSoftness, Color4f _edgeColor
+                , float _emissivity
+            )
+{
+    float4 o = 0;
+
+    float hardEdge = _edgeWidth / 2;
+    float softEdge = hardEdge + _edgeSoftness + urs_epsilon;
+
+    float2 uv = _uv;
+
+    float   mask    = 1 - URS_TEXTURE_2D_SAMPLE(_maskTex, uv).r;
+    float4  color0  = URS_TEXTURE_2D_SAMPLE(_fadeOutTex, uv);
+    float4  color1  = URS_TEXTURE_2D_SAMPLE(_fadeInTex, uv);
+
+    float dissolve = _dissolve;
+
+    #if 0
+    float mode = 1;
+    if (mode == 1) 
+    {   
+        // Radial
+        float dist = length(uv - _pivot.xy);
+        dissolve = saturate(dissolve / max(dist, urs_epsilon)); // epsilon to avoid div by zero
+    } 
+    else if (mode == 2) 
+    { 
+        // Rhombus
+        float2 a = uv - _pivot.xy;
+        float dist = abs(a.x) + abs(a.y);
+        dissolve = saturate(dissolve / max(dist, urs_epsilon)); // epsilon to avoid div by zero
+    }
+    #endif
+
+    dissolve = lerp(-softEdge, 1 + softEdge, dissolve);         // prevent bleeding, map to -softEdge, smoothstep will not clamp as 0
+    
+    float fade = step(mask, dissolve);
+    float4 fadeColor = lerp(color0, color1, fade);
+    o = fadeColor;
+
+    float3 emissiveColor = 0;
+    //if (_edgeWidth || _edgeSoftness)        // prevent divide 0
+    {
+        float edge = abs(dissolve - mask);                          // if ~0, then it is edge
+        float w = smoothstep(hardEdge, softEdge, edge);
+        o = lerp(_edgeColor, fadeColor, saturate(w));
+        emissiveColor = lerp(_edgeColor, 0, saturate(w)).rgb * _emissivity;
+        //o = lerp(fadeColor, _edgeColor, step(edge, softEdge));       // near edge will have edge color 
+    }
+
+    FMaterialAttributes output;
+    output.BaseColor        = o.rgb;
+    output.EmissiveColor    = emissiveColor.rgb;
+    output.Opacity          = o.a;
+
+    return output;
+}
+
+#define URS_MATERIAL_RETURN return ps_main(Parameters, _uv, URS_TEXTURE_2D_ARGS(_fadeInTex), URS_TEXTURE_2D_ARGS(_fadeOutTex), URS_TEXTURE_2D_ARGS(_maskTex) \
+, _dissolve, _pivot, _edgeWidth, _edgeSoftness, _edgeColor, _emissivity); \
+// ---
