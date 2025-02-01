@@ -1,17 +1,16 @@
 
 #include "/urs_shader/common/urs_shader_common.ush"
 
-#define PS_MAIN ps_main
+#define PS_MAIN Ps_main
 
-FMaterialAttributes 
-ps_main(FMaterialPixelParameters Parameters
+FMaterialAttributes Ps_main(FMaterialPixelParameters Parameters
                 // , Texture2D fadeInTex, SamplerState fadeInTexSampler
                 // , Texture2D fadeOutTex, SamplerState fadeOutTexSampler
                 // , Texture2D maskTex, SamplerState maskTexSampler
                 , float2 _uv
-                , URS_TEXTURE_2D(_fadeInTex)
-                , URS_TEXTURE_2D(_fadeOutTex)
-                , URS_TEXTURE_2D(_maskTex)
+                , URS_TEXTURE_2D_PARAMS(_fadeInTex)
+                , URS_TEXTURE_2D_PARAMS(_fadeOutTex)
+                , URS_TEXTURE_2D_PARAMS(_maskTex)
                 , float _dissolve
                 , float2 _pivot
                 , float _edgeWidth, float _edgeSoftness, Color4f _edgeColor
@@ -25,9 +24,9 @@ ps_main(FMaterialPixelParameters Parameters
 
     float2 uv = _uv;
 
-    float   mask    = 1 - URS_TEXTURE_2D_SAMPLE(_maskTex, uv).r;
-    float4  color0  = URS_TEXTURE_2D_SAMPLE(_fadeOutTex, uv);
-    float4  color1  = URS_TEXTURE_2D_SAMPLE(_fadeInTex, uv);
+    float   mask    = 1 - URS_TEXTURE_2D_SAMPLE_ST(_maskTex, uv).r;
+    float4  color0  = URS_TEXTURE_2D_SAMPLE_ST(_fadeOutTex, uv);
+    float4  color1  = URS_TEXTURE_2D_SAMPLE_ST(_fadeInTex, uv);
 
     float dissolve = _dissolve;
 
@@ -72,6 +71,6 @@ ps_main(FMaterialPixelParameters Parameters
     return output;
 }
 
-#define URS_MATERIAL_RETURN return ps_main(Parameters, _uv, URS_TEXTURE_2D_ARGS(_fadeInTex), URS_TEXTURE_2D_ARGS(_fadeOutTex), URS_TEXTURE_2D_ARGS(_maskTex) \
+#define URS_MATERIAL_RETURN return PS_MAIN(Parameters, _uv, URS_TEXTURE_2D_ARGS(_fadeInTex), URS_TEXTURE_2D_ARGS(_fadeOutTex), URS_TEXTURE_2D_ARGS(_maskTex) \
 , _dissolve, _pivot, _edgeWidth, _edgeSoftness, _edgeColor, _emissivity); \
 // ---

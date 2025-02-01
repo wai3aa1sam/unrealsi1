@@ -2,11 +2,95 @@
 
 #include "/Engine/Public/Platform.ush"
 
-#define URS_TEXTURE_2D(name)                    Texture2D name, SamplerState name ## Sampler, float4 name ## _ST
-#define URS_TEXTURE_2D_ARGS(name)               name, name ## Sampler, name ## _ST
-#define URS_TRANSFORM_UV(uv, texName)           uv.xy * texName ## _ST.xy + texName ## _ST.zw
-#define URS_TEXTURE_2D_SAMPLE(texName, uv)      Texture2DSample(texName, texName ## Sampler, uv)
+#define URS_TEXTURE_2D_PARAMS(name)                 Texture2D name, SamplerState name ## Sampler, float4 name ## _ST
+#define URS_TEXTURE_2D_ARGS(name)                   name, name ## Sampler, name ## _ST
+#define URS_TRANSFORM_UV(uv, texName)               uv.xy * texName ## _ST.xy + texName ## _ST.zw
+#define URS_TEXTURE_2D_SAMPLE(texName, uv)          Texture2DSample(texName, texName ## Sampler, uv)
+#define URS_TEXTURE_2D_SAMPLE_ST(texName, uv)       Texture2DSample(texName, texName ## Sampler, URS_TRANSFORM_UV(uv, texName))
 
 #define Color4f float4
 
 static const float urs_epsilon = 0.000001;
+
+#if 0
+#pragma mark --- ursLighting_Common-Impl ---
+#endif
+#if 1
+
+float Lighting_fresnel(float3 worldNormal, float3 viewDir, float fresnelPower)
+{
+    float fresnel = dot(worldNormal, viewDir);
+    fresnel = saturate(1 - fresnel);
+    fresnel = pow(fresnel, fresnelPower);
+    return fresnel;
+}   
+
+float Lighting_fresnel(FMaterialPixelParameters Parameters, float fresnelPower = 5.0)
+{
+    float3 worldNormal  = Parameters.WorldNormal;
+    float3 viewDir      = Parameters.CameraVector;
+
+    float fresnel = Lighting_fresnel(worldNormal, viewDir, fresnelPower);
+    return fresnel;
+}   
+
+#endif
+
+
+#if 0
+#pragma mark --- ursSpaceTransform-Impl ---
+#endif
+#if 1
+
+float2 SpaceTransform_caclSceneUv(FMaterialPixelParameters Parameters)
+{
+    float2 screenUv = GetSceneTextureUV(Parameters);
+    return screenUv;
+}
+
+float SpaceTransform_caclSceneDepth(float2 screenUv)
+{
+    float depth = CalcSceneDepth(screenUv);
+    return depth;
+}
+
+float SpaceTransform_caclObjectDepth(FMaterialPixelParameters Parameters)
+{
+    float depth  = Parameters.ScreenPosition.w;
+    return depth;
+}
+
+float3 SpaceTransform_screenToViewPos(float2 screenUv, float depth)
+{
+    return ScreenToViewPos(screenUv, depth);
+}
+
+float3 SpaceTransform_getWorldPosition(FMaterialPixelParameters Parameters)
+{
+    return LWCToFloat(GetWorldPosition(Parameters));
+}
+
+#endif
+
+#if 0
+#pragma mark --- ursVfxUtil-Impl ---
+#endif
+#if 1
+
+float VfxUtil_isIntersect(FMaterialPixelParameters Parameters, float2 screenUv, float threshold)
+{
+    float depth     = SpaceTransform_caclSceneDepth(screenUv);
+    float objDepth  = SpaceTransform_caclObjectDepth(Parameters);
+
+    float3 posVs0 = SpaceTransform_screenToViewPos(screenUv, depth);
+    float3 posVs1 = SpaceTransform_screenToViewPos(screenUv, objDepth);
+
+    // check if the depth buffer has ~ depth with current object
+    // if yes, then it is intersect
+    float isIntersect = saturate(smoothstep(0, threshold, posVs0.z - posVs1.z));
+    isIntersect = saturate(smoothstep(threshold, 0, depth - objDepth));
+
+    return isIntersect;
+}
+
+#endif
