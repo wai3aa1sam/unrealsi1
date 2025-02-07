@@ -7,9 +7,10 @@ public class urs_core : ModuleRules
 {
 	public urs_core(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
+		PCHUsage            = PCHUsageMode.UseExplicitOrSharedPCHs;
+        bEnableExceptions   = true;
+
+        PublicDependencyModuleNames.AddRange(new string[] 
 		{
             "UMG",			   
 			"Slate",		   
