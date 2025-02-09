@@ -9,3 +9,11 @@
 #include <CoreMinimal.h>
 
 #include <urs_core.h>
+
+#include <GlobalShader.h>
+#include <ShaderParameterStruct.h>
+#include <DataDrivenShaderPlatformInfo.h>
+
+#include <RenderGraph.h>
+#include <RenderTargetPool.h>
+#include <Engine/TextureRenderTarget2D.h>

@@ -1,0 +1,273 @@
+#pragma once
+
+#include "/Engine/Public/Platform.ush"
+
+// 
+//#include "/Engine/Private/MaterialTemplate.ush"       // error if included
+
+#if !URS_SHADER
+#include "/urs_shader/common/ursMaterialSceneUtil.ush"
+#endif
+
+#include "/Engine/Private/PositionReconstructionCommon.ush"
+#include "/Engine/Private/DBufferNormalReprojection.ush"
+
+#define URS_TEXTURE_2D_PARAMS(name)                 Texture2D name, SamplerState name ## Sampler, float4 name ## _ST
+#define URS_TEXTURE_2D_ARGS(name)                   name, name ## Sampler, name ## _ST
+#define URS_TRANSFORM_UV(uv, texName)               uv.xy * texName ## _ST.xy + texName ## _ST.zw
+#define URS_TEXTURE_2D_SAMPLE(texName, uv)          Texture2DSample(texName, texName ## Sampler, uv)
+#define URS_TEXTURE_2D_SAMPLE_ST(texName, uv)       Texture2DSample(texName, texName ## Sampler, URS_TRANSFORM_UV(uv, texName))
+
+#define Color4f float4
+
+static const float urs_epsilon = 0.000001;
+
+#if 0
+#pragma mark --- ursLighting_Common-Impl ---
+#endif
+#if 1
+
+float Lighting_fresnel(float3 worldNormal, float3 viewDir, float fresnelPower)
+{
+    float fresnel = dot(worldNormal, viewDir);
+    fresnel = saturate(1 - fresnel);
+    fresnel = pow(fresnel, fresnelPower);
+    return fresnel;
+}   
+
+float Lighting_fresnel(FMaterialPixelParameters Parameters, float fresnelPower = 5.0)
+{
+    float3 worldNormal  = Parameters.WorldNormal;
+    float3 viewDir      = Parameters.CameraVector;
+
+    float fresnel = Lighting_fresnel(worldNormal, viewDir, fresnelPower);
+    return fresnel;
+}   
+
+float Lighting_fresnel(FMaterialPixelParameters Parameters, float3 worldNormal, float fresnelPower)
+{
+    float3 viewDir      = Parameters.CameraVector;
+    return Lighting_fresnel(worldNormal, viewDir, fresnelPower);
+}   
+
+#endif
+
+
+#if 0
+#pragma mark --- ursSpaceTransform-Impl ---
+#endif
+#if 1
+
+float2 SpaceTransform_caclSceneUv(FMaterialPixelParameters Parameters)
+{
+    float2 screenUv = GetSceneTextureUV(Parameters);
+    return screenUv;
+}
+
+float SpaceTransform_caclSceneDepth(float2 screenUv)
+{
+    float depth = CalcSceneDepth(screenUv);
+    return depth;
+}
+
+float SpaceTransform_caclObjectDepth(FMaterialPixelParameters Parameters)
+{
+    float depth  = Parameters.ScreenPosition.w;
+    return depth;
+}
+
+float3 SpaceTransform_screenToViewPos(float2 screenUv, float depth)
+{
+    return ScreenToViewPos(screenUv, depth);
+}
+
+float3 SpaceTransform_getWorldPosition(FMaterialPixelParameters Parameters)
+{
+    return LWCToFloat(GetWorldPosition(Parameters));
+}
+
+float3 SpaceTransform_reconstructWorldPositionFromDepth(float2 uv, float depth)
+{
+	float3 wsPos = ReconstructWorldPositionFromDepth(uv, depth);
+    return wsPos;
+}
+
+float3 SpaceTransform_reconstructWorldPositionFromDepth(FMaterialPixelParameters Parameters)
+{
+	float2 screenUv = SpaceTransform_caclSceneUv(Parameters);
+    float  depth    = SpaceTransform_caclSceneDepth(screenUv);
+    float3 wsPos    = SpaceTransform_reconstructWorldPositionFromDepth(screenUv, depth);
+    return wsPos;
+}
+
+/*
+- copy from TranslatedWorldPositionFromSceneDepth
+*/
+float3 SpaceTransform_caclTranslatedWorldPositionFromScenePosAndDepth(float2 ScreenPosition, float SceneDepth)
+{
+	float3 WorldPosition = mul(float4(ScreenPosition * SceneDepth, SceneDepth, 1), PrimaryView.ScreenToTranslatedWorld).xyz;
+	return WorldPosition;
+}
+
+float3 SpaceTransform_caclWorldNormalFromSceenPosAndDepth(float2 screenUv, float4 screenPos, float sceneDepth, float3 wsPos)
+{
+    float3 wsNormal = 0;
+    //#if FORWARD_SHADING_NORMAL_CALC && FORWARD_SHADING_ACCURATE_NORMAL
+    #if 1
+
+    //float3 WorldPosition = SpaceTransform_caclTranslatedWorldPositionFromScenePosAndDepth(screenPos.xy, sceneDepth);
+
+    float SceneDepth0 = CalcSceneDepth(screenUv + float2(View.BufferSizeAndInvSize.z, 0.0));
+    float SceneDepth1 = CalcSceneDepth(screenUv + float2(0.0, View.BufferSizeAndInvSize.w));
+
+    float3 WorldPosition0 = SpaceTransform_caclTranslatedWorldPositionFromScenePosAndDepth(screenPos.xy + float2(2 * View.ViewSizeAndInvSize.z, 0.0), SceneDepth0);
+    float3 WorldPosition1 = SpaceTransform_caclTranslatedWorldPositionFromScenePosAndDepth(screenPos.xy - float2(0.0, 2 * View.ViewSizeAndInvSize.w), SceneDepth1);
+    wsNormal = normalize(cross(WorldPosition0 - wsPos, WorldPosition1 - wsPos));
+
+    #elif 0 // FORWARD_SHADING_NORMAL_CALC
+
+    wsNormal = normalize(cross(ddx(WorldPosition), ddy(WorldPosition)));
+    wsNormal *= sign(dot(ResolvedView.TranslatedWorldCameraOrigin - NewPosition, WorldNormal));
+
+    #else
+
+    #endif
+
+    // copy from NiagaraEmitterInstanceShader.usf, a FLWCVector3 version
+    #if 0
+
+    // 	FLWCVector3 WorldPosition = WorldPositionFromSceneDepth(ScreenPosition.xy, depth);
+
+    //     float CollisionDepthBounds = 500.0f;
+    //     float SceneDepth0 = CalcSceneDepth(ScreenUv + float2(View.BufferSizeAndInvSize.z, 0.0));
+    //     float SceneDepth1 = CalcSceneDepth(ScreenUv + float2(0.0, View.BufferSizeAndInvSize.w));
+    //     // When using the forward shading, the normal of the pixel is approximated by the derivative of the world position
+    //     // of the pixel. But in on the visible edge this derivative can become very high, making CollisionPlane almost
+    //     // perpendicular to the view plane. In these case the particle may collide the visible edges of the diferent meshes
+    //     // in the view frustum. To avoid this, we disable the collision test if one of the derivate is above a threshold.
+    //     // if (max(abs(depth - SceneDepth0), abs(depth - SceneDepth1)) > CollisionDepthBounds)
+    //     // {
+    //     //     return;
+    //     // }
+
+    //     FLWCVector3 WorldPosition0 = WorldPositionFromSceneDepth(ScreenPosition.xy + float2(2 * View.ViewSizeAndInvSize.z, 0.0), SceneDepth0);
+    //     FLWCVector3 WorldPosition1 = WorldPositionFromSceneDepth(ScreenPosition.xy - float2(0.0, 2 * View.ViewSizeAndInvSize.w), SceneDepth1);
+    //     float3 WorldNormal = normalize(cross(LWCSubtract(WorldPosition0, WorldPosition).Offset, LWCSubtract(WorldPosition1, WorldPosition).Offset));
+
+    #endif
+    
+    return wsNormal;
+}
+
+float3 SpaceTransform_caclWorldNormalFromSceenPosAndDepth(float2 screenUv, float4 screenPos, float sceneDepth)
+{
+    float3 wsPos = SpaceTransform_caclTranslatedWorldPositionFromScenePosAndDepth(screenPos.xy, sceneDepth);
+    return SpaceTransform_caclWorldNormalFromSceenPosAndDepth(screenUv, screenPos, sceneDepth, wsPos);
+}
+
+float3 SpaceTransform_caclWorldNormal(float2 screenUv, float4 screenPos, float sceneDepth, float3 wsPos)
+{
+    float3 wsNormal = 0;
+
+    #if SHADING_PATH_DEFERRED
+
+    wsNormal = SceneUtil_SceneTextureLookup(screenUv, PPI_WorldNormal, false);
+
+    // this will crash
+    // float3 WorldNormal = Texture2DSampleLevel(SceneTexturesStruct.GBufferATexture, SceneTexturesStruct_GBufferATextureSampler, screenUv, 0).xyz * 2.0 - 1.0;
+
+    #else
+
+    SpaceTransform_caclWorldNormalFromSceenPosAndDepth(screenUv, screenPos, sceneDepth, wsPos);
+
+    #endif
+    
+    return wsNormal;
+}
+
+float3 SpaceTransform_caclWorldNormal(float2 screenUv, float4 screenPos, float sceneDepth)
+{
+    float3 wsPos = SpaceTransform_caclTranslatedWorldPositionFromScenePosAndDepth(screenPos.xy, sceneDepth);
+    return SpaceTransform_caclWorldNormal(screenUv, screenPos, sceneDepth, wsPos);
+}
+
+#endif // ursSpaceTransform
+
+#if 0
+#pragma mark --- ursVfxUtil-Impl ---
+#endif
+#if 1
+
+float VfxUtil_isIntersect(FMaterialPixelParameters Parameters, float2 screenUv, float threshold)
+{
+    float depth     = SpaceTransform_caclSceneDepth(screenUv);
+    float objDepth  = SpaceTransform_caclObjectDepth(Parameters);
+
+    float3 posVs0 = SpaceTransform_screenToViewPos(screenUv, depth);
+    float3 posVs1 = SpaceTransform_screenToViewPos(screenUv, objDepth);
+
+    // check if the depth buffer has ~ depth with current object
+    // if yes, then it is intersect
+    float isIntersect = saturate(smoothstep(0, threshold, posVs0.z - posVs1.z));
+    isIntersect = saturate(smoothstep(threshold, 0, depth - objDepth));
+
+    return isIntersect;
+}
+
+#endif // ursVfxUtil
+
+#if 0
+#pragma mark --- ursMath-Impl ---
+#endif
+#if 1
+
+float  Math_square(float  x) { return x * x; }
+float2 Math_square(float2 x) { return x * x; }
+float3 Math_square(float3 x) { return x * x; }
+float4 Math_square(float4 x) { return x * x; }
+
+float  Math_invLerp(float  from, float  to, float  value) { return (value - from) / (to - from); }
+float2 Math_invLerp(float2 from, float2 to, float2 value) { return (value - from) / (to - from); }
+float3 Math_invLerp(float3 from, float3 to, float3 value) { return (value - from) / (to - from); }
+float4 Math_invLerp(float4 from, float4 to, float4 value) { return (value - from) / (to - from); }
+
+float Math_remap(float origFrom, float origTo, float targetFrom, float targetTo, float value)
+{
+  float rel = Math_invLerp(origFrom, origTo, value);
+  return lerp(targetFrom, targetTo, rel);
+}
+
+float2 Math_remap(float2 origFrom, float2 origTo, float2 targetFrom, float2 targetTo, float2 value)
+{
+  float2 rel = Math_invLerp(origFrom, origTo, value);
+  return lerp(targetFrom, targetTo, rel);
+}
+
+float3 Math_remap(float3 origFrom, float3 origTo, float3 targetFrom, float3 targetTo, float3 value)
+{
+  float3 rel = Math_invLerp(origFrom, origTo, value);
+  return lerp(targetFrom, targetTo, rel);
+}
+
+float4 Math_remap(float4 origFrom, float4 origTo, float4 targetFrom, float4 targetTo, float4 value)
+{
+  float4 rel = Math_invLerp(origFrom, origTo, value);
+  return lerp(targetFrom, targetTo, rel);
+}
+
+float  Math_remapNeg11To01(float  v) { return 0.5 * v + 0.5; }
+float2 Math_remapNeg11To01(float2 v) { return 0.5 * v + 0.5; }
+float3 Math_remapNeg11To01(float3 v) { return 0.5 * v + 0.5; }
+float4 Math_remapNeg11To01(float4 v) { return 0.5 * v + 0.5; }
+
+float3 Math_remapNeg11To01_Inv_Y(float3 v) { return float3(0.5f, -0.5f, 0.5f) * v + 0.5; }
+
+float  Math_remap01ToNeg11(float  v) { return 2.0 * v - 1.0; }
+float2 Math_remap01ToNeg11(float2 v) { return 2.0 * v - 1.0; }
+float3 Math_remap01ToNeg11(float3 v) { return 2.0 * v - 1.0; }
+float4 Math_remap01ToNeg11(float4 v) { return 2.0 * v - 1.0; }
+
+float3 Math_remap01ToNeg11_Inv_Y(float3 v) { float3 o = Math_remap01ToNeg11(v); o.y = -o.y; return o; }
+
+
+#endif

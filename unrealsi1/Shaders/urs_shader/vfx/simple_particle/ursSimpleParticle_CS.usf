@@ -1,0 +1,89 @@
+
+#include "/urs_shader/common/urs_shader_common.ush"
+
+/*
+* reference:
+* ~ https://github.com/SimpleTalkCpp/workshop-2021-07-unity-shader
+*/
+
+float3 initVelocity;
+float3 initVelocityVariant;
+
+float initLifespan;
+float initLifespanVariant;
+
+float deltaTime;
+float gravity;
+float bounciness;
+
+float4 ColliderPlane;
+float3 emitterPos;
+
+int m_activeParticleCount;
+int newParticleStart;
+int newParticleEnd;
+
+RWStructuredBuffer<float3> _particleNoise;
+int _particleNoiseCount;
+
+RWStructuredBuffer<float3> _particlePosition;
+RWStructuredBuffer<float3> _particleVelocity;
+RWStructuredBuffer<float2> _particleLifespan; // x: remain, y: total
+
+float3 getNoise(int i)
+{
+    return _particleNoise[(uint) i % (uint) _particleNoiseCount];
+}
+
+[numthreads(32, 32, 1)]
+void CS_main(uint3 ThreadId : SV_DispatchThreadID)
+{
+    int i = (int) id.x;
+
+    if (i >= m_activeParticleCount)
+        return;
+
+    if ((newParticleEnd > newParticleStart && i >= newParticleStart && i < newParticleEnd)
+	 || (newParticleEnd < newParticleStart && i < newParticleEnd))
+    {
+	// new particle
+        float3 noise = getNoise(i);
+        _particlePosition[i] = emitterPos;
+        _particleVelocity[i] = initVelocity + initVelocityVariant * noise;
+
+        float life = initLifespan + initLifespanVariant * noise.x;
+        _particleLifespan[i] = life.xx;
+    }
+	
+    _particleLifespan[i].x -= deltaTime;
+
+    float3 oldVel = _particleVelocity[i];
+    float3 oldPos = _particlePosition[i];
+
+    float3 newVel = oldVel + float3(0, gravity, 0) * deltaTime;
+    float3 newPos = oldPos + newVel * deltaTime;
+
+	// collision
+    float planeD = ColliderPlane.w;
+    float3 N = ColliderPlane.xyz;
+
+    float oldD = dot(N, oldPos);
+    float newD = dot(N, newPos);
+
+    if ((oldD - planeD) * (newD - planeD) < 0)
+    {
+        float3 moved = newPos - oldPos;
+        float movedDis = length(moved);
+        float3 V = moved / movedDis;
+
+        float VN = dot(V, N);
+        float t = (oldD - planeD) / VN;
+        float3 hitPos = oldPos + V * t;
+
+        newVel = reflect(newVel, N) * bounciness;
+        newPos = hitPos + newVel * deltaTime * (movedDis - t);
+    }
+
+    _particlePosition[i] = newPos;
+    _particleVelocity[i] = newVel;
+}

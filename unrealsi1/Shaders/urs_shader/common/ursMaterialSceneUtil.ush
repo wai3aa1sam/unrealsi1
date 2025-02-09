@@ -1,0 +1,324 @@
+#pragma once
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+
+//#include "/Engine/Private/MaterialTemplate.ush"
+
+/*
+- most function copy from "/Engine/Private/MaterialTemplate.ush", as this file cannot be included
+*/
+
+#if 0
+#pragma mark --- ursSceneUtil-Impl ---
+#endif
+#if 1
+
+//////////////////////////////////////////////////////////////////////////
+//! Must match ESceneTextureId
+
+#define PPI_SceneColor 0
+#define PPI_SceneDepth 1
+#define PPI_DiffuseColor 2
+#define PPI_SpecularColor 3
+#define PPI_SubsurfaceColor 4
+#define PPI_BaseColor 5
+#define PPI_Specular 6
+#define PPI_Metallic 7
+#define PPI_WorldNormal 8
+#define PPI_SeparateTranslucency 9
+#define PPI_Opacity 10
+#define PPI_Roughness 11
+#define PPI_MaterialAO 12
+#define PPI_CustomDepth 13
+#define PPI_PostProcessInput0 14
+#define PPI_PostProcessInput1 15
+#define PPI_PostProcessInput2 16
+#define PPI_PostProcessInput3 17
+#define PPI_PostProcessInput4 18
+#define PPI_PostProcessInput5 19 // (UNUSED)
+#define PPI_PostProcessInput6 20 // (UNUSED)
+#define PPI_DecalMask 21
+#define PPI_ShadingModelColor 22
+#define PPI_ShadingModelID 23
+#define PPI_AmbientOcclusion 24
+#define PPI_CustomStencil 25
+#define PPI_StoredBaseColor 26
+#define PPI_StoredSpecular 27
+#define PPI_Velocity 28
+#define PPI_WorldTangent 29
+#define PPI_Anisotropy 30
+
+// #if NEEDS_SCENE_TEXTURES
+
+#if SHADING_PATH_MOBILE
+
+MaterialFloat4 SceneUtil_MobileSceneTextureLookup(inout FMaterialPixelParameters Parameters, int SceneTextureId, float2 UV)
+{
+#if SCENE_TEXTURES_DISABLED
+	// When scene textures are disabled, the output is matched to the dummy scene texture defaults.
+	switch(SceneTextureId)
+	{
+	case PPI_SceneDepth:
+	case PPI_CustomDepth:
+		return ConvertFromDeviceZ(0.0f);
+	case PPI_MaterialAO:
+	case PPI_CustomStencil:
+		return 1.0f;
+	default:
+		return 0.0f;
+	}
+#else
+	const float2 PixelPos = UV * View.BufferSizeAndInvSize.xy;
+	FGBufferData GBuffer = MobileFetchAndDecodeGBuffer(UV, PixelPos);
+
+	switch(SceneTextureId)
+	{
+		// order needs to match to ESceneTextureId
+	case PPI_SceneDepth:
+		return GBuffer.Depth;
+	case PPI_DiffuseColor:
+		return MaterialFloat4(GBuffer.DiffuseColor, 0);
+	case PPI_SpecularColor:
+		return MaterialFloat4(GBuffer.SpecularColor, 0);
+	case PPI_SubsurfaceColor:
+		return IsSubsurfaceModel(GBuffer.ShadingModelID) ? MaterialFloat4( ExtractSubsurfaceColor(GBuffer), GBuffer.CustomData.a ) : GBuffer.CustomData;
+	case PPI_BaseColor:
+		return MaterialFloat4(GBuffer.BaseColor, 0);
+	case PPI_Specular:
+		return GBuffer.Specular;
+	case PPI_Metallic:
+		return GBuffer.Metallic;
+	case PPI_WorldNormal:
+		return MaterialFloat4(GBuffer.WorldNormal, 0);
+	case PPI_SeparateTranslucency:
+		return MaterialFloat4(1, 1, 1, 1);	// todo
+	case PPI_Opacity:
+		return GBuffer.CustomData.a;
+	case PPI_Roughness:
+		return GBuffer.Roughness;
+	case PPI_MaterialAO:
+		return GBuffer.GBufferAO;
+	case PPI_CustomDepth:
+		return GBuffer.CustomDepth;
+#if POST_PROCESS_MATERIAL
+	case PPI_PostProcessInput0:
+	{
+		MaterialFloat4 Input0 = Texture2DSample(PostProcessInput_0_Texture, PostProcessInput_0_SharedSampler, UV);
+		#if POST_PROCESS_MATERIAL_BEFORE_TONEMAP && METAL_PROFILE
+		// Decode the input color since the color is encoded for MSAA 
+		// The decode instructions might be able to skip with dynamic branch
+		if (bMetalMSAAHDRDecode)
+		{
+			Input0.rgb = Input0.rgb * rcp(Input0.r*(-0.299) + Input0.g*(-0.587) + Input0.b*(-0.114) + 1.0);
+		}
+		#endif
+		return Input0;
+	}
+#endif // POST_PROCESS_MATERIAL
+	case PPI_DecalMask:
+		return 0;  // material compiler will return an error
+	case PPI_ShadingModelColor:
+		return MaterialFloat4(GetShadingModelColor(GBuffer.ShadingModelID), 1);
+	case PPI_ShadingModelID:
+		return MaterialFloat4(GBuffer.ShadingModelID, 0, 0, 0);
+	case PPI_AmbientOcclusion:
+		return 1;
+	case PPI_CustomStencil:
+		return GBuffer.CustomStencil;
+	case PPI_WorldTangent:
+		return MaterialFloat4(GBuffer.WorldTangent, 0);
+	default:
+		return MaterialFloat4(0, 0, 0, 0);
+	}
+#endif
+}
+
+#endif // SHADING_PATH_MOBILE
+
+#if SHADING_PATH_DEFERRED
+
+#if POST_PROCESS_MATERIAL
+/** Samples the screen-space velocity for the specified UV coordinates. */
+float2 PostProcessVelocityLookup(float Depth, float2 UV)
+{
+	float4 EncodedVelocity = Texture2DSampleLevel(SceneTexturesStruct.GBufferVelocityTexture, SceneTexturesStruct_GBufferVelocityTextureSampler, UV, 0);
+
+	float2 Velocity;
+	if( EncodedVelocity.x > 0.0 )
+	{
+		Velocity = DecodeVelocityFromTexture(EncodedVelocity).xy;
+	}
+	else
+	{
+		float4 ThisClip = float4( UV, Depth, 1 );
+		float4 PrevClip = mul( ThisClip, View.ClipToPrevClip );
+		float2 PrevScreen = PrevClip.xy / PrevClip.w;
+		Velocity = UV - PrevScreen;
+	}
+
+	return Velocity;
+}
+#endif
+
+/** Applies an offset to the scene texture lookup and decodes the HDR linear space color. */
+float4 SceneUtil_SceneTextureLookup(float2 UV, int SceneTextureIndex, bool bFiltered)
+{
+#if SCENE_TEXTURES_DISABLED
+
+	// When scene textures are disabled, the output is matched to the dummy scene texture defaults.
+	switch(SceneTextureIndex)
+	{
+	case PPI_SceneDepth:
+	case PPI_CustomDepth:
+		return ConvertFromDeviceZ(0.0f);
+	case PPI_MaterialAO:
+	case PPI_CustomStencil:
+		return 1.0f;
+	default:
+		return 0.0f;
+	}
+
+#elif MATERIAL_SHADINGMODEL_SINGLELAYERWATER
+
+	if (SceneTextureIndex == PPI_CustomDepth)
+	{
+		MaterialFloat Depth = ConvertFromDeviceZ(Texture2DSample(SingleLayerWater.CustomDepthTexture, SingleLayerWater.CustomDepthSampler, UV).r);
+		return MaterialFloat4(Depth.rrr, 0.f);
+	}
+	else if (SceneTextureIndex == PPI_CustomStencil)
+	{
+		MaterialFloat Stencil = SingleLayerWater.CustomStencilTexture.Load(int3(UV * View.BufferSizeAndInvSize.xy, 0)) STENCIL_COMPONENT_SWIZZLE;
+		return MaterialFloat4(Stencil, Stencil, Stencil, 0.f);
+	}
+
+#else // SCENE_TEXTURES_DISABLED
+
+	const uint2 PixelPos = uint2(UV * View.BufferSizeAndInvSize.xy);
+
+	// 1. Post-process inputs which are independent on material data
+	switch (SceneTextureIndex)
+	{
+		case PPI_SceneColor:			return float4(CalcSceneColor(UV), 0);
+		case PPI_SceneDepth:			return CalcSceneDepth(UV);
+		case PPI_SeparateTranslucency:	return float4(1, 1, 1, 1);	// todo
+		case PPI_CustomDepth:			return CalcSceneCustomDepth(UV);
+	#if POST_PROCESS_MATERIAL
+		case PPI_PostProcessInput0:		return Texture2DSample(PostProcessInput_0_Texture, bFiltered ? PostProcessInput_BilinearSampler : PostProcessInput_0_SharedSampler, UV);
+		case PPI_PostProcessInput1:		return Texture2DSample(PostProcessInput_1_Texture, bFiltered ? PostProcessInput_BilinearSampler : PostProcessInput_1_SharedSampler, UV);
+		case PPI_PostProcessInput2:		return Texture2DSample(PostProcessInput_2_Texture, bFiltered ? PostProcessInput_BilinearSampler : PostProcessInput_2_SharedSampler, UV);
+		case PPI_PostProcessInput3:		return Texture2DSample(PostProcessInput_3_Texture, bFiltered ? PostProcessInput_BilinearSampler : PostProcessInput_3_SharedSampler, UV);
+		case PPI_PostProcessInput4:		return Texture2DSample(PostProcessInput_4_Texture, bFiltered ? PostProcessInput_BilinearSampler : PostProcessInput_4_SharedSampler, UV);
+	#endif // __POST_PROCESS_COMMON__
+		case PPI_DecalMask:				return 0;  // material compiler will return an error
+		case PPI_AmbientOcclusion:		return CalcSceneAO(UV);
+		case PPI_CustomStencil:			return CalcSceneCustomStencil(PixelPos);
+	#if POST_PROCESS_MATERIAL
+		case PPI_Velocity:				return float4(PostProcessVelocityLookup(ConvertToDeviceZ(CalcSceneDepth(UV)), UV), 0, 0);
+	#endif
+	}
+
+	// 2. Post-process inputs which are dependent on material data
+	//    Note: For PostProcess material we always return the first layer dataCalcSceneCustomStencil
+	#if SUBSTRATE_ENABLED && IS_DBUFFER_DECAL
+	{
+		// A special decal path to avoid requiring the binding of substrate data in the decal passes. Decals can only access depth, stencil and depth-from-normals or reprojected.
+		switch (SceneTextureIndex)
+		{
+		case PPI_DiffuseColor:			return 0.0f;
+		case PPI_SpecularColor:			return 0.0f;
+		case PPI_SubsurfaceColor:		return 0.0f;
+		case PPI_BaseColor:				return 0.0f;
+		case PPI_Specular:				return 0.0f;
+		case PPI_Metallic:				return 0.0f;
+		case PPI_WorldNormal:			return GetDBufferReprojectedWorldNormal(UV); // DBuffer uses depth buffer gradients or reprojection of last frame normal.
+		case PPI_Opacity:				return 1.0f;
+		case PPI_Roughness:				return 0.0f;
+		case PPI_MaterialAO:			return 0.0f;
+		case PPI_ShadingModelColor:		return 0.0f;
+		case PPI_ShadingModelID:		return 0.0f;
+		case PPI_StoredBaseColor:		return 0.0f;
+		case PPI_StoredSpecular:		return 0.0f;
+		case PPI_WorldTangent:			return 0.0f;
+		case PPI_Anisotropy:			return 0.0f;
+		}
+	}
+	#elif SUBSTRATE_ENABLED
+	{
+		#ifdef SubstrateStruct
+			#define SubstrateSceneTexture SubstrateStruct
+		#else
+			#define SubstrateSceneTexture Substrate
+		#endif
+		FSubstrateAddressing SubstrateAddressing   = GetSubstratePixelDataByteOffset(PixelPos, uint2(View.BufferSizeAndInvSize.xy), SubstrateSceneTexture.MaxBytesPerPixel);
+		FSubstratePixelHeader SubstratePixelHeader = UnpackSubstrateHeaderIn(SubstrateSceneTexture.MaterialTextureArray, SubstrateAddressing, SubstrateSceneTexture.TopLayerTexture);
+		BRANCH
+		if (SubstratePixelHeader.ClosureCount > 0)
+		{
+			const FSubstrateSubsurfaceHeader SSSHeader = SubstrateLoadSubsurfaceHeader(SubstrateSceneTexture.MaterialTextureArray, SubstrateSceneTexture.FirstSliceStoringSubstrateSSSData, SubstrateAddressing.PixelCoords);
+			const uint SSSType = SubstrateSubSurfaceHeaderGetSSSType(SSSHeader);
+
+			FSubstrateBSDF BSDF = UnpackSubstrateBSDFIn(SubstrateSceneTexture.MaterialTextureArray, SubstrateAddressing, SubstratePixelHeader);
+			switch (SceneTextureIndex)
+			{
+				// order needs to match to ESceneTextureId
+				case PPI_DiffuseColor:			return float4(SubstrateGetBSDFDiffuseColor(BSDF), 0);
+				case PPI_SpecularColor:			return float4(SubstrateGetBSDFSpecularColor(BSDF), 0);
+				case PPI_SubsurfaceColor:		return float4(SubstrateGetBSDFSubSurfaceColor(BSDF), 0);
+				case PPI_BaseColor:				return float4(SubstrateGetBSDFBaseColor(BSDF), 0);
+				case PPI_Specular:				return SubstrateGetBSDFSpecular(BSDF);
+				case PPI_Metallic:				return SubstrateGetBSDFMetallic(BSDF);
+				case PPI_WorldNormal:			return float4(SubstrateGetWorldNormal(SubstratePixelHeader, BSDF, SubstrateAddressing), 0);
+				case PPI_Opacity:				return BSDF.HasScatteringData() ? SubstrateSubSurfaceHeaderGetOpacity(SSSHeader) : 1.f;
+				case PPI_Roughness:				return SubstrateGetBSDFRoughness(BSDF);
+				case PPI_MaterialAO:			return SubstrateGetAO(SubstratePixelHeader);
+				case PPI_ShadingModelColor:		return float4(GetShadingModelColor(SubstrateGetLegacyShadingModels(BSDF)), 1);
+				case PPI_ShadingModelID:		return float4(SubstrateGetLegacyShadingModels(BSDF), 0, 0, 0);
+				case PPI_StoredBaseColor:		return float4(SubstrateGetBSDFBaseColor(BSDF), 0);
+				case PPI_StoredSpecular:		return float4(SubstrateGetBSDFSpecular(BSDF).rrr, 0);
+				case PPI_WorldTangent:			return float4(SubstrateGetWorldTangent(SubstratePixelHeader, BSDF, SubstrateAddressing), 0);
+				case PPI_Anisotropy:			return SubstrateGetBSDFAnisotropy(BSDF);
+			}
+		}
+		#undef SubstrateSceneTexture
+	}
+	#else // SUBSTRATE_ENABLED
+	{
+		FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(UV, false);
+		switch (SceneTextureIndex)
+		{
+			// order needs to match to ESceneTextureId
+			case PPI_DiffuseColor:			return float4(ScreenSpaceData.GBuffer.DiffuseColor, 0);
+			case PPI_SpecularColor:			return float4(ScreenSpaceData.GBuffer.SpecularColor, 0);
+			case PPI_SubsurfaceColor:		return IsSubsurfaceModel(ScreenSpaceData.GBuffer.ShadingModelID) ? float4(ExtractSubsurfaceColor(ScreenSpaceData.GBuffer), ScreenSpaceData.GBuffer.CustomData.a) : ScreenSpaceData.GBuffer.CustomData;
+			case PPI_BaseColor:				return float4(ScreenSpaceData.GBuffer.BaseColor, 0);
+			case PPI_Specular:				return ScreenSpaceData.GBuffer.Specular;
+			case PPI_Metallic:				return ScreenSpaceData.GBuffer.Metallic;
+			#if IS_DBUFFER_DECAL
+			case PPI_WorldNormal:			return GetDBufferReprojectedWorldNormal(UV); // DBuffer uses depth buffer gradients or reprojection of last frame normal.
+			#else
+			case PPI_WorldNormal:			return float4(ScreenSpaceData.GBuffer.WorldNormal, 0);
+			#endif
+			case PPI_Opacity:				return ScreenSpaceData.GBuffer.CustomData.a;
+			case PPI_Roughness:				return ScreenSpaceData.GBuffer.Roughness;
+			case PPI_MaterialAO:			return ScreenSpaceData.GBuffer.GBufferAO;
+			case PPI_ShadingModelColor:		return float4(GetShadingModelColor(ScreenSpaceData.GBuffer.ShadingModelID), 1);
+			case PPI_ShadingModelID:		return float4(ScreenSpaceData.GBuffer.ShadingModelID, 0, 0, 0);
+			case PPI_StoredBaseColor:		return float4(ScreenSpaceData.GBuffer.StoredBaseColor, 0);
+			case PPI_StoredSpecular:		return float4(ScreenSpaceData.GBuffer.StoredSpecular.rrr, 0);
+			case PPI_WorldTangent:			return float4(ScreenSpaceData.GBuffer.WorldTangent, 0);
+			case PPI_Anisotropy:			return ScreenSpaceData.GBuffer.Anisotropy;
+		}
+	}
+	#endif // SUBSTRATE_ENABLED
+
+#endif // SCENE_TEXTURES_DISABLED
+
+	return float4(0, 0, 0, 0);
+}
+
+#endif // SHADING_PATH_DEFERRED
+
+// #endif // NEEDS_SCENE_TEXTURES
+
+#endif // ursSceneUtil
