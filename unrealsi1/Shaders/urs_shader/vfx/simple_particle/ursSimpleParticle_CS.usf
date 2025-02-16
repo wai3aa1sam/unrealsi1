@@ -1,71 +1,71 @@
 
-#include "/urs_shader/common/urs_shader_common.ush"
-
 /*
 * reference:
 * ~ https://github.com/SimpleTalkCpp/workshop-2021-07-unity-shader
 */
 
-float3 initVelocity;
-float3 initVelocityVariant;
+#include "/urs_shader/common/urs_shader_common.ush"
 
-float initLifespan;
-float initLifespanVariant;
+float3 m_initVelocity;
+float3 m_initVelocityVariant;
 
-float deltaTime;
-float gravity;
-float bounciness;
+float m_initLifespan;
+float m_initLifespanVariant;
 
-float4 ColliderPlane;
-float3 emitterPos;
+float m_deltaTime;
+float m_gravity;
+float m_bounciness;
+
+float4 m_colliderPlane;
+float3 m_emitterPos;
 
 int m_activeParticleCount;
-int newParticleStart;
-int newParticleEnd;
+int m_newParticleStart;
+int m_newParticleEnd;
 
-RWStructuredBuffer<float3> _particleNoise;
-int _particleNoiseCount;
+StructuredBuffer<float3> m_particleNoise;
+int m_particleNoiseCount;
 
-RWStructuredBuffer<float3> _particlePosition;
-RWStructuredBuffer<float3> _particleVelocity;
-RWStructuredBuffer<float2> _particleLifespan; // x: remain, y: total
+RWStructuredBuffer<float3> m_particlePosition;
+RWStructuredBuffer<float3> m_particleVelocity;
+RWStructuredBuffer<float2> m_particleLifespan; // x: remain, y: total
 
 float3 getNoise(int i)
 {
-    return _particleNoise[(uint) i % (uint) _particleNoiseCount];
+    return m_particleNoise[(uint) i % (uint) m_particleNoiseCount];
 }
 
 [numthreads(32, 32, 1)]
 void CS_main(uint3 ThreadId : SV_DispatchThreadID)
 {
-    int i = (int) id.x;
+    int i = (int) ThreadId.x;
 
     if (i >= m_activeParticleCount)
         return;
 
-    if ((newParticleEnd > newParticleStart && i >= newParticleStart && i < newParticleEnd)
-	 || (newParticleEnd < newParticleStart && i < newParticleEnd))
+    if ((m_newParticleEnd > m_newParticleStart && i >= m_newParticleStart && i < m_newParticleEnd)
+	  || (m_newParticleEnd < m_newParticleStart && i < m_newParticleEnd))
     {
-	// new particle
+	 // new particle
         float3 noise = getNoise(i);
-        _particlePosition[i] = emitterPos;
-        _particleVelocity[i] = initVelocity + initVelocityVariant * noise;
+        m_particlePosition[i] = m_emitterPos;
+        m_particleVelocity[i] = m_initVelocity + m_initVelocityVariant * noise;
 
-        float life = initLifespan + initLifespanVariant * noise.x;
-        _particleLifespan[i] = life.xx;
+        float life = m_initLifespan + m_initLifespanVariant * noise.x;
+        m_particleLifespan[i] = life.xx;
     }
 	
-    _particleLifespan[i].x -= deltaTime;
+    m_particleLifespan[i].x -= m_deltaTime;
 
-    float3 oldVel = _particleVelocity[i];
-    float3 oldPos = _particlePosition[i];
+    float3 oldVel = m_particleVelocity[i];
+    float3 oldPos = m_particlePosition[i];
 
-    float3 newVel = oldVel + float3(0, gravity, 0) * deltaTime;
-    float3 newPos = oldPos + newVel * deltaTime;
+    float3 newVel = oldVel + float3(0, m_gravity, 0) * m_deltaTime;
+    float3 newPos = oldPos + newVel * m_deltaTime;
 
-	// collision
-    float planeD = ColliderPlane.w;
-    float3 N = ColliderPlane.xyz;
+	 // collision
+    float planeD = m_colliderPlane.w;
+    float3 N = m_colliderPlane.xyz;
 
     float oldD = dot(N, oldPos);
     float newD = dot(N, newPos);
@@ -80,10 +80,11 @@ void CS_main(uint3 ThreadId : SV_DispatchThreadID)
         float t = (oldD - planeD) / VN;
         float3 hitPos = oldPos + V * t;
 
-        newVel = reflect(newVel, N) * bounciness;
-        newPos = hitPos + newVel * deltaTime * (movedDis - t);
+        newVel = reflect(newVel, N) * m_bounciness;
+        newPos = hitPos + newVel * m_deltaTime * (movedDis - t);
     }
 
-    _particlePosition[i] = newPos;
-    _particleVelocity[i] = newVel;
+    m_particlePosition[i] = newPos;
+    m_particleVelocity[i] = newVel;
 }
+

@@ -1,0 +1,113 @@
+
+#include "/urs_shader/common/urs_material_common.ush"
+
+#define PS_MAIN Ps_main
+
+float3 VfxUtil_gridEffect(float3 uvw, float3 gridSize, float gridEdgeWidth, float gridEdgeSoftness)
+{
+    // softness / antialias could done by smoothstep() too
+    // smoothstep(A, B) then smoothstep(B, A)
+    // symmetric transition can combine two smoothstep() into one
+    // ---
+    // [---------------------------example-----------------------------------]
+    // - repeat / softness -        width      - (repeat - width) / softness -
+
+    float3 repeatScale   = gridSize + urs_epsilon;
+    float  width         = 1.0 / gridEdgeWidth;
+    float  softness      = gridEdgeSoftness + urs_epsilon;
+
+    float3 scaledT = frac((uvw + urs_epsilon) / repeatScale);                   // repeat pattern
+    float3 edge0 = saturate(scaledT / softness);                // normalize with edgeSoftness, > 1 means not in transition zone
+    float3 edge1 = saturate((scaledT - width) / softness);      // normalize with edgeSoftness, but offset with width
+    float3 edge = edge0 * (1.0 - edge1);                        // combine both edge and flip one edge
+    edge = edge * edge * (3.0 - (2.0 * edge));                  // Hermite interpolation
+
+    return edge;
+}
+
+float Math_isInRange(float val, float min_, float max_)
+{
+    // float withInFrom = lerp(from, val, val >= from);
+    // float withInTo   = lerp(to, withInFrom, withInFrom <= to);
+    // return withInTo;
+    return lerp(0, 1, val >= min_ && val <= max_);
+}
+
+FMaterialAttributes Ps_main(FMaterialPixelParameters Parameters
+                , float _fresnel, float _emissivity
+                , float3 _gridSize, float _gridEdgeWidth, float _gridEdgeSoftness
+                , float3 _pulseCenter, float _pulseRadius, float _pulseWidth, float _pulseSoftness
+                , Color4f _gridColor, Color4f _fresnelColor
+            )
+{
+    float4 o = 0;
+    FMaterialAttributes output;
+    output.EmissiveColor = 0;
+
+    float2  screenUv        = SpaceTransform_caclSceneUv(Parameters);
+    float3  screenColor     = CalcSceneColor(screenUv);
+
+    float  sceneDepth   = SpaceTransform_caclSceneDepth(screenUv);
+    float3 wsPos        = SpaceTransform_reconstructWorldPositionFromDepth(screenUv, sceneDepth);
+    float3 wsNormal     = SpaceTransform_caclWorldNormal(screenUv, Parameters.ScreenPosition, sceneDepth, wsPos);
+
+    //float fresnel = Lighting_fresnel(Parameters, wsNormal, _fresnel);
+
+    // TODO: revise, wsPos.z == 0 will all white
+    float3 wsPosOffset = wsPos + 50; // magic offset with some value to prevent all white
+    float3 worldGrid = VfxUtil_gridEffect(wsPosOffset, _gridSize, _gridEdgeWidth, _gridEdgeSoftness);
+    float3 finalColor = lerp(_gridColor.rgb * _emissivity, screenColor, worldGrid.x * worldGrid.y * worldGrid.z);
+
+    float3 isEdge = frac(worldGrid);
+    float isIntersect = (isEdge.x > 0 && isEdge.y > 0) || (isEdge.y > 0 && isEdge.z > 0);
+    //finalColor = lerp(finalColor, float3(1, 0, 0), isIntersect);
+
+    float gridMaxDepth = _fresnel;
+    finalColor = lerp(finalColor, screenColor, sceneDepth >= gridMaxDepth); // only show the grid in certain depth
+
+    // pulse
+    float worldUv = 0;
+    float r0 = _pulseRadius;
+    float r1 = _pulseRadius + _pulseWidth;
+    float centerDist = distance(wsPos, _pulseCenter);
+    worldUv.x = Math_invLerp(r0, r1, centerDist);   // [0, 1] is in range of r < d < r +w
+
+    // remap to [-1, 1], abs then [1, 1] (r0 is left 1, r1 is right 1)
+    // 1 - this, then left r0 start from 0 instead of 1, right r1 end at 0 instead of 1
+    // r0 | ---- | r1
+    // from [(left)1.0---0.9---0.8---(center)0---0.8---0.9---(right)1.0]
+    // to   [(left)0.0---0.1---0.2---(center)1---0.2---0.1---(right)0.0]
+    float pulseSmoothEdge = smoothstep(0, _pulseSoftness, 1 - abs(Math_remap01ToNeg11(worldUv.x)));
+    //float pulseSmoothEdge = smoothstep(0, _pulseSoftness, 1 - abs(Math_remap01ToNeg11((1 - frac(worldUv.x)) / (_fresnel + urs_epsilon))));
+    //float pulseSmoothEdge = smoothstep(0, _pulseSoftness, 1 - abs(Math_remap01ToNeg11((1 - frac(worldUv.x)) / (_fresnel + urs_epsilon))));
+
+    //float repeatPulse = (1 - frac(Math_invLerp(r0, r1 + _pulseWidth * 4, centerDist))) / (_fresnel + urs_epsilon);
+    //float pulseInRange = Math_selectInRange(r0, r1 * 4, centerDist);
+    float repeatPulse = (1 - frac(worldUv.x / (_fresnel + urs_epsilon))) ;
+    //repeatPulse *= Math_isInRange(centerDist, r0, r1 * 4);
+
+    //pulseSmoothEdge = smoothstep(0, _pulseSoftness, 1 - abs(Math_remap01ToNeg11(repeatPulse))) * Math_isInRange(centerDist, r0, r0 + _emissivity);
+    //pulseSmoothEdge = smoothstep(0, _pulseSoftness, 1 - abs(Math_remap01ToNeg11(repeatPulse))) * smoothstep(r0, r0 + _emissivity, centerDist);
+
+
+    // TODO: test
+    //float isCircle = 1 - ((Math_square(wsPos - _pulseCenter)) - Math_square(_pulseRadius));
+    //isCircle = distance(wsPos, _pulseCenter) == _pulseRadius;
+
+    float3 pluseColor = _fresnelColor.rgb;
+    finalColor = lerp(finalColor, pluseColor, pulseSmoothEdge);
+    //finalColor = lerp(0, float3(0, 1, 0), x);
+
+    output.EmissiveColor    = finalColor;
+    //output.EmissiveColor    = _fresnelColor * fresnel;
+
+    //output.EmissiveColor    = wsNormal;
+
+    return output;
+}
+
+#define URS_MATERIAL_RETURN return PS_MAIN(Parameters \
+, _fresnel, _emissivity, _gridSize, _gridEdgeWidth, _gridEdgeSoftness \
+, _pulseCenter, _pulseRadius, _pulseWidth, _pulseSoftness \
+, _gridColor, _fresnelColor); \
+// ---

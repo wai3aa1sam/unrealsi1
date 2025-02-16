@@ -2,18 +2,21 @@
 
 #include "urs_shader/common/urs_shader_common.h"
 
-#include "trgActor.generated.h"
+#include "ursSimpleParticle.generated.h"
 
-struct FursSimpleParticleParams;
+class FursSimpleParticleParams;
 
 USTRUCT()
-struct FursSimpleParticleConfigs
+struct URS_SHADER_API FursSimpleParticleConfigs
 {
-	const int numThreads = 64;
+	GENERATED_BODY()
+public:
+	static constexpr int numThreads = 64;
 	int MaxParticleCount = 100;
 
 	float emitPerSecond = 1;
 	float emitPerSecondRemain;
+	float deltaTime;
 
 	FVector3f initVelocity = FVector3f(0, 10, 0);
 	FVector3f initVelocityVariant = FVector3f(1, 0.2f, 1);
@@ -28,8 +31,8 @@ struct FursSimpleParticleConfigs
 	int m_activeParticleCount	= 0;
 	int m_particleIndex			= 0;
 
-	FPlane colliderPlane;
-	FTransform colliderPlane2;
+	FVector3f	emitPosition;
+	FTransform  plane;
 };
 
 //USTRUCT()
@@ -42,14 +45,22 @@ struct FursSimpleParticleConfigs
 //	const int			particleNoiseCount = 2048;
 //};
 
-struct FursSimpleParticleParamCache
+struct FursSimpleParticleParamsCache
 {
 	const int particleNoiseCount = 2048;
 
-	TRefCountPtr<FRDGPooledBuffer> particlePositionBuffer;
-	TRefCountPtr<FRDGPooledBuffer> particleVelocityBuffer;
-	TRefCountPtr<FRDGPooledBuffer> particleLifespanBuffer;
-	TRefCountPtr<FRDGPooledBuffer> particleNoiseBuffer;
+	TRefCountPtr<FRDGPooledBuffer> particlePositionBuffer	= nullptr;
+	TRefCountPtr<FRDGPooledBuffer> particleVelocityBuffer	= nullptr;
+	TRefCountPtr<FRDGPooledBuffer> particleLifespanBuffer	= nullptr;
+	TRefCountPtr<FRDGPooledBuffer> particleNoiseBuffer		= nullptr;
+};
+
+struct FursSimpleParticleRdgRscsRef
+{
+	FRDGBufferRef particlePositionBuffer	= nullptr;
+	FRDGBufferRef particleVelocityBuffer	= nullptr;
+	FRDGBufferRef particleLifespanBuffer	= nullptr;
+	FRDGBufferRef particleNoiseBuffer		= nullptr;
 };
 
 #if 0
@@ -58,7 +69,7 @@ struct FursSimpleParticleParamCache
 #if 1
 
 UCLASS()
-class AursSimpleParticle : public AActor
+class URS_SHADER_API AursSimpleParticle : public AActor
 {
 	GENERATED_BODY()
 public:	
@@ -68,24 +79,31 @@ public:
 	// The render-target we'll pass onto the GPU to be written to
 	UPROPERTY(EditAnywhere, Category = "urs")	UTextureRenderTarget2D* RenderTarget = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "urs")	FursSimpleParticleConfigs	configs;
+	UPROPERTY(EditAnywhere, Category = "urs")	FursSimpleParticleConfigs	_configs;
 
-private:
-	//UPROPERTY(EditAnywhere, Category = "urs")	FursSimpleParticleResources _rscs;
-	UPROPERTY(EditAnywhere, Category = "urs")	FursSimpleParticleParamCache _paramCache;
+	UPROPERTY(EditAnywhere, Category = "urs")	TObjectPtr<UStaticMesh> mesh = nullptr;
+
 public:
 	AursSimpleParticle();
 
 public:
-	void setupShaderParams(FursSimpleParticleParams& out, FursSimpleParticleParamCache& outParamCache, FRDGBuilder& rdgBuilder, const SimpleParticleConfigs& configs);
+	void setupShaderParams(FursSimpleParticleParams& out, FursSimpleParticleParamsCache& outParamsCache, FursSimpleParticleRdgRscsRef& outRdgRscsRef, FRDGBuilder& rdgBuilder, const FursSimpleParticleConfigs& configs);
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
 private:
-	void enqueueRenderCommand(UTextureRenderTarget2D* texRdt, const TArray<FVector3f>& Vertices);
-	//TArray<FVector3f> getVertices(AActor* Actor);
+	void enqueueRenderCommand();
+	void addSimulateParticlePass(FRDGBuilder& rdgBuilder, FursSimpleParticleRdgRscsRef& outRdgRscsRef, const FursSimpleParticleConfigs& configs);
+	void addRenderParticlePass(FRDGBuilder& rdgBuilder, FursSimpleParticleRdgRscsRef& rdgRscsRef);
+
+private:
+	void createQuad(UStaticMesh* o);
+
+private:
+	//UPROPERTY(EditAnywhere, Category = "urs")	FursSimpleParticleResources _rscs;
+	FursSimpleParticleParamsCache	_paramCache;
 };
 
 #endif

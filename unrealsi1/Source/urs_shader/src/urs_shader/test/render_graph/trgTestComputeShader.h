@@ -19,10 +19,16 @@ public:
 	using VertexType = FVector3f;
 
 private:
+	// DECLARE_EXPORTED_GLOBAL_SHADER(FtrgTestComputeShader, URS_SHADER_API);
 	DECLARE_GLOBAL_SHADER(FtrgTestComputeShader)
 	SHADER_USE_PARAMETER_STRUCT(FtrgTestComputeShader, FGlobalShader)
 
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, ) 
+
+	/*
+	* dumbass unreal cannot use prefix "_" as shader param, otherwise, it will recognize as a global param
+	*/
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(FVector3f, vtx)
 		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, Vertices)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutputTexture)
 	END_SHADER_PARAMETER_STRUCT()

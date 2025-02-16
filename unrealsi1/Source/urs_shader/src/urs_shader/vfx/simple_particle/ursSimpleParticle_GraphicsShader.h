@@ -2,6 +2,21 @@
 
 #include "urs_shader/common/urs_shader_common.h"
 
+/*
+* dumbass unreal cannot use prefix "_" as shader param, otherwise, it will recognize as a global param
+*/
+// BEGIN_SHADER_PARAMETER_STRUCT BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT
+BEGIN_SHADER_PARAMETER_STRUCT(FursSimpleParticleParams_GraphicsShader, )
+	
+	SHADER_PARAMETER(float,		m_scale)
+	SHADER_PARAMETER(FVector4f, m_color)
+
+	// SHADER_PARAMETER_RDG_TEXTURE( Texture2D<float4>,	m_tex)
+	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, m_particlePosition)
+	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float2>, m_particleLifespan) // x: remain, y: total
+
+END_SHADER_PARAMETER_STRUCT()
+
 #if 0
 #pragma mark --- FursSimpleParticle_GraphicsShader-Decl ---
 #endif // 0
@@ -9,59 +24,31 @@
 
 class FursSimpleParticle_GraphicsShader : public FGlobalShader
 {
-	DECLARE_INLINE_TYPE_LAYOUT(FursSimpleParticle_GraphicsShader, NonVirtual);
 public:
+	using FParameters = FursSimpleParticleParams_GraphicsShader;
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+		return true;
 	}
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 	{
 		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-		//OutEnvironment.SetDefine(TEXT("GRID_SUBDIVISION_X"), kGridSubdivisionX);
-		//OutEnvironment.SetDefine(TEXT("GRID_SUBDIVISION_Y"), kGridSubdivisionY);
+		//OutEnvironment.SetDefine(TEXT("VF_SUPPORTS_PRIMITIVE_SCENE_DATA"), 1);
 	}
 
 public:
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, ) 
-	END_SHADER_PARAMETER_STRUCT()
-
 	FursSimpleParticle_GraphicsShader() = default;
 	FursSimpleParticle_GraphicsShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
 		: FGlobalShader(Initializer)
 	{
-		PixelUVSize.Bind(Initializer.ParameterMap, TEXT("PixelUVSize"));
-		RadialDistortionCoefs.Bind(Initializer.ParameterMap, TEXT("RadialDistortionCoefs"));
-		TangentialDistortionCoefs.Bind(Initializer.ParameterMap, TEXT("TangentialDistortionCoefs"));
-		DistortedCameraMatrix.Bind(Initializer.ParameterMap, TEXT("DistortedCameraMatrix"));
-		UndistortedCameraMatrix.Bind(Initializer.ParameterMap, TEXT("UndistortedCameraMatrix"));
-		OutputMultiplyAndAdd.Bind(Initializer.ParameterMap, TEXT("OutputMultiplyAndAdd"));
+		//BindForLegacyShaderParameters<FParameters>(this, Initializer.PermutationId, Initializer.ParameterMap, false);
+		//.Bind(Initializer.ParameterMap, TEXT("_color"));
 	}
 
-	void SetParameters(
-		FRHIBatchedShaderParameters& BatchedParameters,
-		const FIntPoint& DisplacementMapResolution)
-	{
-		FVector2f PixelUVSizeValue(
-			1.f / float(DisplacementMapResolution.X), 1.f / float(DisplacementMapResolution.Y));
-
-		SetShaderValue(BatchedParameters, PixelUVSize, PixelUVSizeValue);
-		/*SetShaderValue(BatchedParameters, DistortedCameraMatrix, FVector4f(CompiledCameraModel.DistortedCameraMatrix));
-		SetShaderValue(BatchedParameters, UndistortedCameraMatrix, FVector4f(CompiledCameraModel.UndistortedCameraMatrix));
-		SetShaderValue(BatchedParameters, RadialDistortionCoefs, RadialDistortionCoefsValue);
-		SetShaderValue(BatchedParameters, TangentialDistortionCoefs, TangentialDistortionCoefsValue);
-		SetShaderValue(BatchedParameters, OutputMultiplyAndAdd, FVector2f(CompiledCameraModel.OutputMultiplyAndAdd));*/
-	}
-
-private:
-	LAYOUT_FIELD(FShaderParameter, PixelUVSize);
-	LAYOUT_FIELD(FShaderParameter, RadialDistortionCoefs);
-	LAYOUT_FIELD(FShaderParameter, TangentialDistortionCoefs);
-	LAYOUT_FIELD(FShaderParameter, DistortedCameraMatrix);
-	LAYOUT_FIELD(FShaderParameter, UndistortedCameraMatrix);
-	LAYOUT_FIELD(FShaderParameter, OutputMultiplyAndAdd);
+public:
+	//LAYOUT_FIELD(FShaderParameter, _color);
 };
 
 #endif
@@ -71,16 +58,14 @@ private:
 #endif // 0
 #if 1
 
-class FursSimpleParticle_VS : public FursSimpleParticle_GraphicsShader
+class URS_SHADER_API FursSimpleParticle_VS : public FursSimpleParticle_GraphicsShader
 {
-	DECLARE_GLOBAL_SHADER(FursSimpleParticle_VS);
 public:
-	FursSimpleParticle_VS() = default;
-	FursSimpleParticle_VS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-		: FursSimpleParticle_GraphicsShader(Initializer)
-	{
+	DECLARE_GLOBAL_SHADER(FursSimpleParticle_VS);
+	SHADER_USE_PARAMETER_STRUCT(FursSimpleParticle_VS, FursSimpleParticle_GraphicsShader);
+	using FParameters = FursSimpleParticleParams_GraphicsShader;
 
-	}
+public:
 };
 
 #endif
@@ -90,16 +75,14 @@ public:
 #endif // 0
 #if 1
 
-class FursSimpleParticle_PS : public FursSimpleParticle_GraphicsShader
+class URS_SHADER_API FursSimpleParticle_PS : public FursSimpleParticle_GraphicsShader
 {
-	DECLARE_GLOBAL_SHADER(FursSimpleParticle_PS);
 public:
-	FursSimpleParticle_PS() = default;
-	FursSimpleParticle_PS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-		: FursSimpleParticle_GraphicsShader(Initializer)
-	{
+	DECLARE_GLOBAL_SHADER(FursSimpleParticle_PS);
+	SHADER_USE_PARAMETER_STRUCT(FursSimpleParticle_PS, FursSimpleParticle_GraphicsShader);
+	using FParameters = FursSimpleParticleParams_GraphicsShader;
 
-	}
+public:
 };
 
 #endif

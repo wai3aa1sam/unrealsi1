@@ -3,8 +3,6 @@
 
 IMPLEMENT_GLOBAL_SHADER(FursSimpleParticle_CS, "/urs_shader/vfx/simple_particle/ursSimpleParticle_CS.usf", "CS_main", SF_Compute);
 
-IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FursSimpleParticleParams, "FursSimpleParticleParams");
-
 #if 0
 #pragma mark --- FursSimpleParticle_CS-Impl ---
 #endif // 0
@@ -22,11 +20,13 @@ IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FursSimpleParticleParams, "FursSimplePa
 void
 FursSimpleParticle_CS::BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TArray<FVector3f>& InVerts)
 {
+	#if 0
 	check(IsInRenderingThread());
 
 	FRDGBuilder GraphBuilder(RHICmdList);
 
-	auto* shaderParams = GraphBuilder.AllocParameters<FursSimpleParticle_CS::FParameters>();
+
+	//auto* shaderParams = GraphBuilder.AllocParameters<FursSimpleParticle_CS::FParameters>();
 	//shaderParams->
 
 	auto& arr = InVerts;
@@ -75,13 +75,22 @@ FursSimpleParticle_CS::BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList
 	GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
 	GraphBuilder.QueueBufferExtraction
 
-	// Execute the graph
-	GraphBuilder.Execute();
+		// Execute the graph
+		GraphBuilder.Execute();
 
 	FRHICopyTextureInfo copyInfo = {};
 	// Queue the UAV we wrote to for extraction 
 	RHICmdList.CopyTexture(PooledComputeTarget.GetReference()->GetRHI(), RenderTarget->GetRenderTargetResource()->TextureRHI, copyInfo);
+	#endif // 0
 }
 
 
 #endif
+
+
+//void 
+//addComputePass_Simulate(FRDGBuilder& rdgBuilder, AursSimpleParticle* simpleParticle, const FursSimpleParticleConfigs& configs)
+//{
+//	//FursSimpleParticleRdgRscsRef
+//	//simpleParticle->setupShaderParams(*params, simpleParticle, )
+//}

@@ -12,7 +12,10 @@ public class urs_shader : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] 
 		{
         // --- urs
-            "urs_core",
+            "urs_core"
+        // --- 
+            , "ProceduralMeshComponent"
+            ,
         // --- unreals
             "UMG",			   
 			"Slate",		   
