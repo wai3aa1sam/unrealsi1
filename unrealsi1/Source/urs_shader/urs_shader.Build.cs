@@ -8,8 +8,9 @@ public class urs_shader : ModuleRules
 	public urs_shader(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
+        //PrivatePCHHeaderFile = "ThirdPerson_PCH.h";
+
+        PublicDependencyModuleNames.AddRange(new string[] 
 		{
         // --- urs
             "urs_core"
@@ -22,6 +23,7 @@ public class urs_shader : ModuleRules
 			"SlateCore",	   
             "ApplicationCore",
             "RenderCore",
+            "Renderer",
             "RHI",
             "Projects",
 		// --- Default ---

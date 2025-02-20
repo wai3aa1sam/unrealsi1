@@ -7,30 +7,27 @@
 #include <ProceduralMeshComponent.h>
 #include <Engine/StaticMesh.h>
 
-#if 0
-#pragma mark --- AursSimpleParticle-Impl ---
-#endif // 0
-#if 1
-
-AursSimpleParticle::AursSimpleParticle()
+template<class TO, class FROM>
+UE::Math::TVector<TO>
+FVector3_cast(const UE::Math::TVector<FROM>& v)
 {
-	PrimaryActorTick.bCanEverTick = true;
-
-	//UStaticMesh* mesh = nullptr;
-	//URS_CDO_FINDER(mesh,	"StaticMesh'/Engine/BasicShapes/Cube.Cube''");
-
-	ExampleMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Example Mesh"));
-	//ExampleMesh->SetStaticMesh(mesh);
-	RootComponent = ExampleMesh;
+	return UE::Math::TVector<TO>{ static_cast<TO>(v.X), static_cast<TO>(v.Y), static_cast<TO>(v.Z) };
 }
 
-template<class T, class ALLOC>
-FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV*& out, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, ALLOC>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
+int roundUpToMultiple(int v, int n) {
+	return (v + n - 1) / n * n;
+}
+
+#if 1
+
+
+template<class T, class TAlloc>
+FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, TAlloc>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
 {
 	// using ElementType = decltype(data)::ElementType;
 	FRDGBufferRef buf = CreateStructuredBuffer(rdgBuilder, name, data, InitialDataFlags);
 	FRDGBufferSRVRef bufSrv = rdgBuilder.CreateSRV(buf, PF_R32_UINT);
-	out = bufSrv;
+	*outSrv = bufSrv;
 	return buf;
 }
 
@@ -44,13 +41,13 @@ FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder&
 	return buf;
 }
 
-template<class T, class ALLOC>
-FRDGBufferRef createStructuredBufferWithUav(FRDGBufferUAV*& out, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, ALLOC>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
+template<class T, class TAlloc>
+FRDGBufferRef createStructuredBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, TAlloc>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
 {
 	// using ElementType = decltype(data)::ElementType;
 	FRDGBufferRef buf = CreateStructuredBuffer(rdgBuilder, name, data, InitialDataFlags);
 	FRDGBufferUAVRef bufUav = rdgBuilder.CreateUAV(buf, PF_R32_UINT);
-	out = bufUav;
+	*outUav = bufUav;
 	return buf;
 }
 
@@ -78,15 +75,26 @@ FRDGBufferRef registerExternalBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder&
 	return buf;
 }
 
-int RoundUpToMultiple(int v, int n) {
-	return (v + n - 1) / n * n;
-}
+#endif // 1
 
-template<class TO, class FROM>
-UE::Math::TVector<TO>
-FVector3_cast(const UE::Math::TVector<FROM>& v)
+
+
+
+#if 0
+#pragma mark --- AursSimpleParticle-Impl ---
+#endif // 0
+#if 1
+
+AursSimpleParticle::AursSimpleParticle()
 {
-	return UE::Math::TVector<TO>{ static_cast<TO>(v.X), static_cast<TO>(v.Y), static_cast<TO>(v.Z) };
+	PrimaryActorTick.bCanEverTick = true;
+
+	//UStaticMesh* mesh = nullptr;
+	//URS_CDO_FINDER(mesh,	"StaticMesh'/Engine/BasicShapes/Cube.Cube''");
+
+	ExampleMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Example Mesh"));
+	//ExampleMesh->SetStaticMesh(mesh);
+	RootComponent = ExampleMesh;
 }
 
 void 
@@ -96,9 +104,9 @@ AursSimpleParticle::setupShaderParams(FursSimpleParticleParams& out, FursSimpleP
 	URS_ASSERT(IsInRenderingThread());
 
 	out.m_initVelocity			= configs.initVelocity;
-	out.m_initVelocityVariant		= configs.initVelocityVariant;
+	out.m_initVelocityVariant	= configs.initVelocityVariant;
 	out.m_initLifespan			= configs.initLifespan;
-	out.m_initLifespanVariant		= configs.initLifespanVariant;
+	out.m_initLifespanVariant	= configs.initLifespanVariant;
 
 	out.m_deltaTime	= configs.deltaTime;
 	out.m_emitterPos	= configs.emitPosition;
@@ -118,7 +126,7 @@ AursSimpleParticle::setupShaderParams(FursSimpleParticleParams& out, FursSimpleP
 	bool isCreateBuffer = false;
 	isCreateBuffer = !outParamsCache.particlePositionBuffer;
 
-	int roundUpParticleCount = RoundUpToMultiple(configs.MaxParticleCount, configs.numThreads);
+	int roundUpParticleCount = roundUpToMultiple(configs.MaxParticleCount, configs.numThreads);
 
 	if (isCreateBuffer)
 	{
@@ -127,7 +135,13 @@ AursSimpleParticle::setupShaderParams(FursSimpleParticleParams& out, FursSimpleP
 		outRdgRscsRef.particleLifespanBuffer = createStructuredBufferWithUav(&out.m_particleLifespan, rdgBuilder, TEXT("m_particleLifespan"), sizeof(FVector2f), roundUpParticleCount);
 
 		// TODO: init
-		outRdgRscsRef.particleNoiseBuffer	 = createStructuredBufferWithSrv(&out.m_particleNoise,	 rdgBuilder, TEXT("m_particleNoise"),	sizeof(FVector3f), roundUpParticleCount);
+		TArray<FVector3f> noises;
+		noises.SetNum(configs.particleNoiseCount);
+		for (size_t i = 0; i < configs.particleNoiseCount; i++)
+		{
+			noises[i] = FVector3_cast<float>(FMath::VRand());
+		}
+		outRdgRscsRef.particleNoiseBuffer	 = createStructuredBufferWithSrv(&out.m_particleNoise,	 rdgBuilder, TEXT("m_particleNoise"), noises);
 	}
 	else
 	{
@@ -144,6 +158,15 @@ AursSimpleParticle::BeginPlay()
 	Super::BeginPlay();
 
 	GEngine->GameUserSettings->SetFrameRateLimit(60);
+
+	_simpleParticleSvExt = FSceneViewExtensions::NewExtension<FursSimpleParticleSceneViewExt>(this);
+
+	#if 0
+	if (auto* world = GetWorld())
+	{
+		world->GetSubsystem<UursSimpleParticleSubSystem>()->setSimpleParticle(this);
+	}
+	#endif // 0
 }
 
 void 
@@ -173,18 +196,22 @@ AursSimpleParticle::Tick(float DeltaTime)
 }
 
 void 
-AursSimpleParticle::enqueueRenderCommand()
+AursSimpleParticle::enqueueRenderCommand(const FSceneView& sceneView)
 {
 	//TShaderMapRef<FursSimpleParticle_CS> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
+	bool isInvalidMesh = !_mesh || !_mesh->GetRenderData() || _mesh->GetRenderData()->LODResources.IsEmpty();
+	if (isInvalidMesh)
+		return;
+
 	ENQUEUE_RENDER_COMMAND(ComputeShader)(
-		[/*ComputeShader, */configs = _configs, &paramCache = _paramCache, this]
+		[/*ComputeShader, */this, configs = _configs, &paramCache = _paramCache, sceneView = sceneView]
 		(FRHICommandListImmediate& RHICmdList)
 		{
 			FRDGBuilder rdgBuilder(RHICmdList);
 			FursSimpleParticleRdgRscsRef rdgRscsRef;
 			addSimulateParticlePass(rdgBuilder, rdgRscsRef, configs);
-			addRenderParticlePass(rdgBuilder, rdgRscsRef);
+			addRenderParticlePass(rdgBuilder, sceneView, rdgRscsRef, configs);
 		}
 	);
 
@@ -217,7 +244,7 @@ AursSimpleParticle::addSimulateParticlePass(FRDGBuilder& rdgBuilder, FursSimpleP
 // init compute buffer
 
 void 
-AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, FursSimpleParticleRdgRscsRef& rdgRscsRef)
+AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, const FSceneView& sceneView, FursSimpleParticleRdgRscsRef& rdgRscsRef, const FursSimpleParticleConfigs& configs)
 {
 	auto& rhiCmdList = rdgBuilder.RHICmdList;
 
@@ -235,11 +262,10 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, FursSimplePar
 
 	auto* shaderParams = rdgBuilder.AllocParameters<FursSimpleParticle_VS::FParameters>();
 
-	rdgBuilder.AddPass(RDG_EVENT_NAME("AADASD"), ERDGPassFlags::Raster,
-		[vs, ps, shaderParams, mesh = this->mesh]
+	rdgBuilder.AddPass(RDG_EVENT_NAME("RenderParticlePass"), ERDGPassFlags::Raster,
+		[vs, ps, shaderParams, mesh = this->_mesh, configs = configs, sceneView = &sceneView]
 		(FRHICommandList& rhiCmdList)
 		{
-
 			FGraphicsPipelineStateInitializer GraphicsPSOInit;
 			rhiCmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
 			GraphicsPSOInit.DepthStencilState						= TStaticDepthStencilState<false, CF_Always>::GetRHI();
@@ -253,20 +279,17 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, FursSimplePar
 
 			float depthMaxDefault = 1.0;
 
-			UStaticMesh a;
-
-			FIndexBuffer& idxBuf = a.GetRenderData()->LODResources[0].IndexBuffer;
-
+			
 			//UStaticMesh* mesh = nullptr;
 			//mesh->GetSourceModel(0).loa
 
 			//RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1);
 			//OutTextureRenderTargetResource->GetSizeX(), OutTextureRenderTargetResource->GetSizeY(), 1.f);
+
+			//sceneView.view;
 			//rhiCmdList.SetViewport(0, 0, 0.f, OutTextureRenderTargetResource->GetSizeX(), OutTextureRenderTargetResource->GetSizeY(), depthMaxDefault);
 
 			// SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), PixelParameters);
-
-			// RHICmdList.SetStreamSource(0, GClearVertexBuffer.VertexBufferRHI, 0);
 
 			//UProceduralMeshComponent* proceduralMeshComp = nullptr;
 			//proceduralMeshComp->UpdateMeshSection
@@ -274,14 +297,32 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, FursSimplePar
 			SetShaderParameters(rhiCmdList, vs, vs.GetVertexShader(),	*shaderParams);
 			SetShaderParameters(rhiCmdList, ps, ps.GetPixelShader(),	*shaderParams);
 
-			// mesh->GetRenderData()->LODResources
-			rhiCmdList.DrawIndexedPrimitive(idxBuf.IndexBufferRHI, 0, 0, 4, 0, 1, 1);
+			#if 1
+			auto* rdData = mesh->GetRenderData();
+			auto& idxBuf = rdData->LODResources[0].IndexBuffer;
+
+			FMeshDrawCommand cmd;
+			mesh->GetRenderData()->LODVertexFactories[0].VertexFactory.GetStreams(GMaxRHIFeatureLevel, EVertexInputStreamType::Default, cmd.VertexStreams);
+			cmd.IndexBuffer = idxBuf.IndexBufferRHI;
+
+			auto vtxCount = mesh->GetRenderData()->LODResources[0].GetNumVertices();
+
+			//const int8 PrimitiveIdStreamIndex = (IsUniformBufferStaticSlotValid(SceneArgs.BatchedPrimitiveSlot) ? -1 : MeshDrawCommand.PrimitiveIdStreamIndex);
+			for (int32 VertexBindingIndex = 0; VertexBindingIndex < cmd.VertexStreams.Num(); VertexBindingIndex++)
+			{
+				const FVertexInputStream& Stream = cmd.VertexStreams[VertexBindingIndex];
+				rhiCmdList.SetStreamSource(Stream.StreamIndex, Stream.VertexBuffer, Stream.Offset);
+				//StateCache.VertexStreams[Stream.StreamIndex] = Stream;
+			}
+			//MeshDrawCommand.ShaderBindings.SetOnCommandList(RHICmdList, MeshPipelineState.BoundShaderState.AsBoundShaderState(), StateCache.ShaderBindings);
+
+			auto primitiveCount = vtxCount / 3;
+			auto instCount = configs.m_activeParticleCount;
+			rhiCmdList.DrawIndexedPrimitive(cmd.IndexBuffer, 0, 0, vtxCount, 0, primitiveCount, instCount);
+			#endif // 1
 		}
 	);
 	#endif // 1
-
-
-
 }
 
 void 
@@ -298,7 +339,5 @@ AursSimpleParticle::createQuad(UStaticMesh* o)
 		//rsc.VertexBuffers.
 	}
 }
-
-
 
 #endif

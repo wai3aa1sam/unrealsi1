@@ -9,6 +9,7 @@
 #include <CoreMinimal.h>
 
 #include <urs_core.h>
+#include <urs_core/render/urs_render.h>
 
 #include <GlobalShader.h>
 #include <ShaderParameterStruct.h>
@@ -17,3 +18,6 @@
 #include <RenderGraph.h>
 #include <RenderTargetPool.h>
 #include <Engine/TextureRenderTarget2D.h>
+
+#include <MeshPassProcessor.h>
+#include <SceneView.h>

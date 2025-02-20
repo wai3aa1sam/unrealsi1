@@ -2,9 +2,12 @@
 
 #include "urs_shader/common/urs_shader_common.h"
 
+#include "ursSimpleParticleSceneViewExt.h"
+
 #include "ursSimpleParticle.generated.h"
 
 class FursSimpleParticleParams;
+class AursSimpleParticle;
 
 USTRUCT()
 struct URS_SHADER_API FursSimpleParticleConfigs
@@ -12,6 +15,9 @@ struct URS_SHADER_API FursSimpleParticleConfigs
 	GENERATED_BODY()
 public:
 	static constexpr int numThreads = 64;
+	static constexpr int particleNoiseCount = 2048;
+
+public:
 	int MaxParticleCount = 100;
 
 	float emitPerSecond = 1;
@@ -33,22 +39,11 @@ public:
 
 	FVector3f	emitPosition;
 	FTransform  plane;
-};
 
-//USTRUCT()
-//struct FursSimpleParticleResources
-//{
-//	TArray<FVector3f>	particlePositions;
-//	TArray<FVector3f>	particleVelocities;
-//	TArray<FVector2f>	particleLifespans;		// x: remain, y: total
-//	TArray<FVector3f>	particleNoises;
-//	const int			particleNoiseCount = 2048;
-//};
+};
 
 struct FursSimpleParticleParamsCache
 {
-	const int particleNoiseCount = 2048;
-
 	TRefCountPtr<FRDGPooledBuffer> particlePositionBuffer	= nullptr;
 	TRefCountPtr<FRDGPooledBuffer> particleVelocityBuffer	= nullptr;
 	TRefCountPtr<FRDGPooledBuffer> particleLifespanBuffer	= nullptr;
@@ -81,7 +76,7 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "urs")	FursSimpleParticleConfigs	_configs;
 
-	UPROPERTY(EditAnywhere, Category = "urs")	TObjectPtr<UStaticMesh> mesh = nullptr;
+	UPROPERTY(EditAnywhere, Category = "urs")	TObjectPtr<UStaticMesh> _mesh = nullptr;
 
 public:
 	AursSimpleParticle();
@@ -94,9 +89,9 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 private:
-	void enqueueRenderCommand();
+	void enqueueRenderCommand(const FSceneView& sceneView);
 	void addSimulateParticlePass(FRDGBuilder& rdgBuilder, FursSimpleParticleRdgRscsRef& outRdgRscsRef, const FursSimpleParticleConfigs& configs);
-	void addRenderParticlePass(FRDGBuilder& rdgBuilder, FursSimpleParticleRdgRscsRef& rdgRscsRef);
+	void addRenderParticlePass(FRDGBuilder& rdgBuilder, const FSceneView& sceneView, FursSimpleParticleRdgRscsRef& rdgRscsRef, const FursSimpleParticleConfigs& configs);
 
 private:
 	void createQuad(UStaticMesh* o);
@@ -104,6 +99,8 @@ private:
 private:
 	//UPROPERTY(EditAnywhere, Category = "urs")	FursSimpleParticleResources _rscs;
 	FursSimpleParticleParamsCache	_paramCache;
+
+	TSharedPtr<FursSimpleParticleSceneViewExt> _simpleParticleSvExt;
 };
 
 #endif

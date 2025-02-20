@@ -6,7 +6,7 @@
 #include <CoreMinimal.h>
 #include <Modules/ModuleManager.h>
 
-class FursCoreModule : public IModuleInterface
+class URS_CORE_API FursCoreModule : public IModuleInterface
 {
 public:
 
