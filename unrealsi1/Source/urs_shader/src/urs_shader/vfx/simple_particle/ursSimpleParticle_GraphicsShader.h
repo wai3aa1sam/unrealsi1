@@ -5,27 +5,34 @@
 /*
 * dumbass unreal cannot use prefix "_" as shader param, otherwise, it will recognize as a global param
 */
-// BEGIN_SHADER_PARAMETER_STRUCT BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT
+
+#if 1
 BEGIN_SHADER_PARAMETER_STRUCT(FursSimpleParticleParams_GraphicsShader, )
-	
-	SHADER_PARAMETER(float,		m_scale)
-	SHADER_PARAMETER(FVector4f, m_color)
+
+	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+
+	SHADER_PARAMETER(float,			m_scale)
+	SHADER_PARAMETER(FLinearColor,	m_color)
+	SHADER_PARAMETER(FVector3f,		m_objPos)
 
 	// SHADER_PARAMETER_RDG_TEXTURE( Texture2D<float4>,	m_tex)
 	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, m_particlePosition)
 	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float2>, m_particleLifespan) // x: remain, y: total
 
+	RENDER_TARGET_BINDING_SLOTS()
 END_SHADER_PARAMETER_STRUCT()
+#endif // 0
 
 #if 0
 #pragma mark --- FursSimpleParticle_GraphicsShader-Decl ---
 #endif // 0
 #if 1
 
+// use FMeshMaterialShader for static mesh
 class FursSimpleParticle_GraphicsShader : public FGlobalShader
 {
 public:
-	using FParameters = FursSimpleParticleParams_GraphicsShader;
+	//using FParameters = FursSimpleParticleParams_GraphicsShader;
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{

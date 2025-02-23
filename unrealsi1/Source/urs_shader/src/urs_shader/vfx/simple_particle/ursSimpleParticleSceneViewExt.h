@@ -46,7 +46,7 @@ protected:
 	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const override { return true; }
 
 private:
-	//TWeakObjectPtr<AursSimpleParticle> _simpleParticle = nullptr;
+	TWeakObjectPtr<AursSimpleParticle> _simpleParticle = nullptr;
 };
 
 #endif

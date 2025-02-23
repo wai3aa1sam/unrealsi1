@@ -7,6 +7,33 @@
 #include <ProceduralMeshComponent.h>
 #include <Engine/StaticMesh.h>
 
+#include <MediaShaders.h>
+
+// CoreMesh.h
+
+inline FBufferRHIRef createQuad(FRHICommandListBase& rhiCmdList, bool isReverseZ, float ULeft = 0.0f, float URight = 1.0f, float VTop = 0.0f, float VBottom = 1.0f)
+{
+	FRHIResourceCreateInfo CreateInfo(TEXT("TempMediaVertexBuffer"));
+	FBufferRHIRef VertexBufferRHI = rhiCmdList.CreateVertexBuffer(sizeof(FMediaElementVertex) * 4, BUF_Volatile, CreateInfo);
+	void* VoidPtr = rhiCmdList.LockBuffer(VertexBufferRHI, 0, sizeof(FMediaElementVertex) * 4, RLM_WriteOnly);
+
+	FMediaElementVertex* Vertices = (FMediaElementVertex*)VoidPtr;
+
+	float depth = isReverseZ ? 0.0f : 1.0f;
+	Vertices[0].Position.Set(-1.0f,  1.0f, depth, 1.0f); // Top Left
+	Vertices[1].Position.Set( 1.0f,	 1.0f, depth, 1.0f); // Top Right
+	Vertices[2].Position.Set(-1.0f, -1.0f, depth, 1.0f); // Bottom Left
+	Vertices[3].Position.Set( 1.0f,	-1.0f, depth, 1.0f); // Bottom Right
+	
+	Vertices[0].TextureCoordinate.Set(ULeft, VTop);
+	Vertices[1].TextureCoordinate.Set(URight, VTop);
+	Vertices[2].TextureCoordinate.Set(ULeft, VBottom);
+	Vertices[3].TextureCoordinate.Set(URight, VBottom);
+	rhiCmdList.UnlockBuffer(VertexBufferRHI);
+
+	return VertexBufferRHI;
+}
+
 template<class TO, class FROM>
 UE::Math::TVector<TO>
 FVector3_cast(const UE::Math::TVector<FROM>& v)
@@ -18,8 +45,24 @@ int roundUpToMultiple(int v, int n) {
 	return (v + n - 1) / n * n;
 }
 
-#if 1
 
+struct ursRenderUtil
+{
+public:
+	static const FViewInfo& getViewInfo_Unsafe(const FSceneView& view)
+	{
+		check(view.bIsViewInfo);
+		return static_cast<const FViewInfo&>(view);
+	}
+
+	static FIntRect getRawViewRect_Unsafe(const FSceneView& view)
+	{
+		return getViewInfo_Unsafe(view).ViewRect;
+	}
+
+};
+
+#if 1
 
 template<class T, class TAlloc>
 FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, TAlloc>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
@@ -77,9 +120,6 @@ FRDGBufferRef registerExternalBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder&
 
 #endif // 1
 
-
-
-
 #if 0
 #pragma mark --- AursSimpleParticle-Impl ---
 #endif // 0
@@ -126,7 +166,7 @@ AursSimpleParticle::setupShaderParams(FursSimpleParticleParams& out, FursSimpleP
 	bool isCreateBuffer = false;
 	isCreateBuffer = !outParamsCache.particlePositionBuffer;
 
-	int roundUpParticleCount = roundUpToMultiple(configs.MaxParticleCount, configs.numThreads);
+	int roundUpParticleCount = roundUpToMultiple(configs.maxParticleCount, configs.numThreads);
 
 	if (isCreateBuffer)
 	{
@@ -176,52 +216,68 @@ AursSimpleParticle::Tick(float DeltaTime)
 
 	auto& configs = _configs;
 
-	configs.emitPerSecond += DeltaTime * configs.emitPerSecond;
+	if (RootComponent)
+	{
+		configs.emitPosition = FVector3_cast<float>(RootComponent->GetComponentLocation());
+	}
+
+	configs.emitPerSecondRemain += DeltaTime * configs.emitPerSecond;
 	configs.deltaTime = DeltaTime * configs.timeScale;
 
 	int newParticleCount = static_cast<int>(configs.emitPerSecondRemain);
 	configs.emitPerSecondRemain -= newParticleCount;
 
 	int newParticleStart = configs.m_particleIndex;
-	int newParticleEnd   = (configs.m_particleIndex + newParticleCount) % configs.MaxParticleCount;
+	int newParticleEnd   = (configs.m_particleIndex + newParticleCount) % configs.maxParticleCount;
 
 	configs.m_particleIndex += newParticleCount;
-	configs.m_particleIndex %= configs.MaxParticleCount;
+	configs.m_particleIndex %= configs.maxParticleCount;
 	configs.m_activeParticleCount = FMath::Max(configs.m_particleIndex, configs.m_activeParticleCount);
 
 	int threadGroup = (configs.m_activeParticleCount + configs.numThreads - 1) / configs.numThreads;
 	if (threadGroup <= 0) return;
 
+	_passParams.configs = configs;
 	//enqueueRenderCommand(RenderTarget, vertices);
 }
 
 void 
-AursSimpleParticle::enqueueRenderCommand(const FSceneView& sceneView)
+AursSimpleParticle::RenderThread_render(FRDGBuilder& rdgBuilder, const FSceneView& sceneView)
 {
+	check(IsInRenderingThread());
+	_passParams.sceneView = &sceneView;
+
 	//TShaderMapRef<FursSimpleParticle_CS> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
 	bool isInvalidMesh = !_mesh || !_mesh->GetRenderData() || _mesh->GetRenderData()->LODResources.IsEmpty();
 	if (isInvalidMesh)
 		return;
 
+	#if 0
 	ENQUEUE_RENDER_COMMAND(ComputeShader)(
-		[/*ComputeShader, */this, configs = _configs, &paramCache = _paramCache, sceneView = sceneView]
+		[this]
 		(FRHICommandListImmediate& RHICmdList)
 		{
 			FRDGBuilder rdgBuilder(RHICmdList);
 			FursSimpleParticleRdgRscsRef rdgRscsRef;
-			addSimulateParticlePass(rdgBuilder, rdgRscsRef, configs);
-			addRenderParticlePass(rdgBuilder, sceneView, rdgRscsRef, configs);
+			addSimulateParticlePass(rdgBuilder, &_passParams);
+			//addRenderParticlePass(rdgBuilder, &_passParams);
 		}
 	);
-
+	#else
+	addSimulateParticlePass(rdgBuilder, &_passParams);
+	addRenderParticlePass(rdgBuilder, &_passParams);
+	#endif // 0
 }
 
 void 
-AursSimpleParticle::addSimulateParticlePass(FRDGBuilder& rdgBuilder, FursSimpleParticleRdgRscsRef& outRdgRscsRef, const FursSimpleParticleConfigs& configs)
+AursSimpleParticle::addSimulateParticlePass(FRDGBuilder& rdgBuilder, PassParams* passParams)
 {
 	//RDG_CSV_STAT_EXCLUSIVE_SCOPE(GraphBuilder, RenderBasePass);
 	//SCOPED_NAMED_EVENT(FDeferredShadingSceneRenderer_RenderBasePass, FColor::Emerald);
+
+	const auto& configs = passParams->configs;
+	auto& outRdgRscsRef = passParams->rdgRscsRef;
 
 	int threadGroup = (configs.m_activeParticleCount + configs.numThreads - 1) / configs.numThreads;
 	if (threadGroup <= 0)
@@ -237,16 +293,12 @@ AursSimpleParticle::addSimulateParticlePass(FRDGBuilder& rdgBuilder, FursSimpleP
 	#endif // 0
 }
 
-// build a quad mesh (vtx, idx buffer)
-// vertex factory? GetVertexElements? vertex param?
-// instanced draw
-// how to add this pass to AfterRenderingTransparents
-// init compute buffer
-
 void 
-AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, const FSceneView& sceneView, FursSimpleParticleRdgRscsRef& rdgRscsRef, const FursSimpleParticleConfigs& configs)
+AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* passParams)
 {
-	auto& rhiCmdList = rdgBuilder.RHICmdList;
+	auto& rhiCmdList	= rdgBuilder.RHICmdList;
+	auto& sceneView		= *passParams->sceneView;
+	auto& rdgRscsRef	= passParams->rdgRscsRef;
 
 	//GraphBuilder.SetCommandListStat(GET_STATID(STAT_CLM_BasePass));
 	//RenderBasePassInternal(GraphBuilder, InViews, SceneTextures, BasePassRenderTargets, BasePassDepthStencilAccess, ForwardBasePassTextures, DBufferTextures, bDoParallelBasePass, bRenderLightmapDensity, InstanceCullingManager, bNaniteEnabled, NaniteBasePassShadingCommands, NaniteRasterResults);
@@ -260,52 +312,61 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, const FSceneV
 	TShaderMapRef<FursSimpleParticle_VS> vs{shaderMap};
 	TShaderMapRef<FursSimpleParticle_PS> ps{shaderMap};
 
-	auto* shaderParams = rdgBuilder.AllocParameters<FursSimpleParticle_VS::FParameters>();
+	auto* shaderParams = rdgBuilder.AllocParameters<FursSimpleParticle_PS::FParameters>();
 
-	rdgBuilder.AddPass(RDG_EVENT_NAME("RenderParticlePass"), ERDGPassFlags::Raster,
-		[vs, ps, shaderParams, mesh = this->_mesh, configs = configs, sceneView = &sceneView]
+	auto& viewInfo = ursRenderUtil::getViewInfo_Unsafe(sceneView);
+
+	auto sceneTexs = viewInfo.GetSceneTextures();
+	shaderParams->RenderTargets[0]				= FRenderTargetBinding(sceneTexs.Color.Target, ERenderTargetLoadAction::ELoad);
+	shaderParams->RenderTargets.DepthStencil	= FDepthStencilBinding(sceneTexs.Depth.Target, ERenderTargetLoadAction::ELoad, FExclusiveDepthStencil::DepthWrite_StencilNop);
+
+	shaderParams->View							= viewInfo.ViewUniformBuffer;
+	shaderParams->m_color						= FLinearColor::Red;
+	shaderParams->m_scale						= 1;
+	shaderParams->m_objPos						= passParams->configs.emitPosition;		// TODO: remove
+
+	shaderParams->m_particlePosition			= rdgBuilder.CreateSRV(rdgRscsRef.particlePositionBuffer);
+	shaderParams->m_particleLifespan			= rdgBuilder.CreateSRV(rdgRscsRef.particleLifespanBuffer);
+
+	rdgBuilder.AddPass(RDG_EVENT_NAME("RenderParticlePass"), shaderParams, ERDGPassFlags::Raster,
+		[vs, ps, shaderParams, mesh = this->_mesh, passParams, this]
 		(FRHICommandList& rhiCmdList)
 		{
-			FGraphicsPipelineStateInitializer GraphicsPSOInit;
-			rhiCmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
-			GraphicsPSOInit.DepthStencilState						= TStaticDepthStencilState<false, CF_Always>::GetRHI();
-			GraphicsPSOInit.BlendState								= TStaticBlendState<>::GetRHI();
-			GraphicsPSOInit.RasterizerState							= TStaticRasterizerState<>::GetRHI();
-			GraphicsPSOInit.PrimitiveType							= PT_TriangleList;
-			GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI	= GetVertexDeclarationFVector4();		// TODO: need modify
-			GraphicsPSOInit.BoundShaderState.VertexShaderRHI		= vs.GetVertexShader();
-			GraphicsPSOInit.BoundShaderState.PixelShaderRHI			= ps.GetPixelShader();
-			SetGraphicsPipelineState(rhiCmdList, GraphicsPSOInit, 0);
+			const auto& configs	= passParams->configs;
+			auto& sceneView		= *passParams->sceneView;
 
 			float depthMaxDefault = 1.0;
 
+			const FIntRect viewRect = ursRenderUtil::getRawViewRect_Unsafe(sceneView);
+			rhiCmdList.SetViewport(viewRect.Min.X, viewRect.Min.Y, 0.0f, viewRect.Max.X, viewRect.Max.Y, depthMaxDefault);
+
+			FGraphicsPipelineStateInitializer GraphicsPSOInit;
+			rhiCmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+			GraphicsPSOInit.bDepthBounds							= true;
+			GraphicsPSOInit.DepthStencilAccess						= FExclusiveDepthStencil::DepthRead;
+			GraphicsPSOInit.DepthStencilState						= TStaticDepthStencilState<false, CF_DepthNearOrEqual>::GetRHI();
+			GraphicsPSOInit.BlendState								= TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha>::GetRHI();
+			GraphicsPSOInit.RasterizerState							= TStaticRasterizerState<>::GetRHI();
+			GraphicsPSOInit.PrimitiveType							= PT_TriangleList;
+			GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI	= GMediaVertexDeclaration.VertexDeclarationRHI; // GMediaVertexDeclaration.VertexDeclarationRHI; //GetVertexDeclarationFVector4();		// TODO: need modify
+			//GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI	= mesh->GetRenderData()->LODVertexFactories[0].VertexFactory.GetDeclaration();
+
+			GraphicsPSOInit.BoundShaderState.VertexShaderRHI		= vs.GetVertexShader();
+			GraphicsPSOInit.BoundShaderState.PixelShaderRHI			= ps.GetPixelShader();
+			SetGraphicsPipelineState(rhiCmdList, GraphicsPSOInit, 0);
 			
-			//UStaticMesh* mesh = nullptr;
-			//mesh->GetSourceModel(0).loa
-
-			//RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1);
-			//OutTextureRenderTargetResource->GetSizeX(), OutTextureRenderTargetResource->GetSizeY(), 1.f);
-
-			//sceneView.view;
-			//rhiCmdList.SetViewport(0, 0, 0.f, OutTextureRenderTargetResource->GetSizeX(), OutTextureRenderTargetResource->GetSizeY(), depthMaxDefault);
-
-			// SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), PixelParameters);
-
-			//UProceduralMeshComponent* proceduralMeshComp = nullptr;
-			//proceduralMeshComp->UpdateMeshSection
-
 			SetShaderParameters(rhiCmdList, vs, vs.GetVertexShader(),	*shaderParams);
 			SetShaderParameters(rhiCmdList, ps, ps.GetPixelShader(),	*shaderParams);
+			//SetShaderParametersLegacyVS(RHICmdList, VertexShader, InView);
+			//SetShaderParametersLegacyPS(RHICmdList, PixelShader, InView, MaterialProxy, CameraMaterial);
 
-			#if 1
+			#if 0
 			auto* rdData = mesh->GetRenderData();
 			auto& idxBuf = rdData->LODResources[0].IndexBuffer;
 
 			FMeshDrawCommand cmd;
 			mesh->GetRenderData()->LODVertexFactories[0].VertexFactory.GetStreams(GMaxRHIFeatureLevel, EVertexInputStreamType::Default, cmd.VertexStreams);
 			cmd.IndexBuffer = idxBuf.IndexBufferRHI;
-
-			auto vtxCount = mesh->GetRenderData()->LODResources[0].GetNumVertices();
 
 			//const int8 PrimitiveIdStreamIndex = (IsUniformBufferStaticSlotValid(SceneArgs.BatchedPrimitiveSlot) ? -1 : MeshDrawCommand.PrimitiveIdStreamIndex);
 			for (int32 VertexBindingIndex = 0; VertexBindingIndex < cmd.VertexStreams.Num(); VertexBindingIndex++)
@@ -316,9 +377,38 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, const FSceneV
 			}
 			//MeshDrawCommand.ShaderBindings.SetOnCommandList(RHICmdList, MeshPipelineState.BoundShaderState.AsBoundShaderState(), StateCache.ShaderBindings);
 
+			auto vtxCount = mesh->GetRenderData()->LODResources[0].GetNumVertices();
 			auto primitiveCount = vtxCount / 3;
 			auto instCount = configs.m_activeParticleCount;
-			rhiCmdList.DrawIndexedPrimitive(cmd.IndexBuffer, 0, 0, vtxCount, 0, primitiveCount, instCount);
+			//rhiCmdList.DrawIndexedPrimitive(cmd.IndexBuffer, 0, 0, vtxCount, 0, primitiveCount, instCount);
+			rhiCmdList.DrawIndexedPrimitive(cmd.IndexBuffer, 0, 0, vtxCount, 0, primitiveCount, 1);
+
+			#else
+
+
+			#if 0
+
+			FBufferRHIRef VertexBuffer = ::createQuad(rhiCmdList);
+			rhiCmdList.SetStreamSource(0, VertexBuffer, 0);
+			rhiCmdList.DrawPrimitive(0, 2, 1);
+
+			#else
+			//static const uint16 Indices[] = { 0, 1, 2, 0, 2, 3 };
+			static const uint16 Indices[] = { 0, 2, 1, 1, 2, 3 };
+
+			FRHIResourceCreateInfo CreateInfo(TEXT("quad_idxs"));
+			FBufferRHIRef IndexBufferRHI = rhiCmdList.CreateIndexBuffer(sizeof(uint16), sizeof(uint16) * 6, BUF_Volatile, CreateInfo);
+			void* VoidPtr2 = rhiCmdList.LockBuffer(IndexBufferRHI, 0, sizeof(uint16) * 6, RLM_WriteOnly);
+			FPlatformMemory::Memcpy(VoidPtr2, Indices, sizeof(uint16) * 6);
+			rhiCmdList.UnlockBuffer(IndexBufferRHI);
+
+			FBufferRHIRef VertexBuffer = ::createQuad(rhiCmdList, this->tempIsQuadReverseDepth);
+			rhiCmdList.SetStreamSource(0, VertexBuffer, 0);
+			rhiCmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, 4, 0, 2, 1);
+
+			#endif // 0
+
+
 			#endif // 1
 		}
 	);

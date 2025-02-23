@@ -1,5 +1,7 @@
 #include "ursSimpleParticleSceneViewExt.h"
 
+#include "ursSimpleParticle.h"
+
 #if 0
 #pragma mark --- FursSimpleParticleSceneViewExt-Impl ---
 #endif // 0
@@ -8,7 +10,7 @@
 FursSimpleParticleSceneViewExt::FursSimpleParticleSceneViewExt(const FAutoRegister& autoReg, AursSimpleParticle* simpleParticle)
 	: Super(autoReg)
 {
-	//_simpleParticle = simpleParticle;
+	_simpleParticle = simpleParticle;
 }
 
 FursSimpleParticleSceneViewExt::~FursSimpleParticleSceneViewExt()
@@ -97,6 +99,11 @@ FursSimpleParticleSceneViewExt::PrePostProcessPass_RenderThread(FRDGBuilder& Gra
 {
 	Super::PrePostProcessPass_RenderThread(GraphBuilder, View, Inputs);
 
+	auto* simpleParticle = _simpleParticle.Get();
+	if (simpleParticle)
+	{
+		simpleParticle->RenderThread_render(GraphBuilder, View);
+	}
 }
 
 void
