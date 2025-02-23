@@ -35,13 +35,17 @@ float3 getNoise(int i)
     return m_particleNoise[(uint) i % (uint) m_particleNoiseCount];
 }
 
-[numthreads(32, 32, 1)]
-void CS_main(uint3 ThreadId : SV_DispatchThreadID)
+[numthreads(64, 1, 1)]
+void CS_main(uint3 threadId : SV_DispatchThreadID)
 {
-    int i = (int) ThreadId.x;
+    int i = (int) threadId.x;
 
     if (i >= m_activeParticleCount)
         return;
+
+    //m_particlePosition[i] = m_particlePosition[i].xzy;
+    //m_particleVelocity[i] = m_particlePosition[i].xzy;
+    //m_particleLifespan[i] = m_particleLifespan[i].yx;
 
     if ((m_newParticleEnd > m_newParticleStart && i >= m_newParticleStart && i < m_newParticleEnd)
 	  || (m_newParticleEnd < m_newParticleStart && i < m_newParticleEnd))
@@ -60,7 +64,7 @@ void CS_main(uint3 ThreadId : SV_DispatchThreadID)
     float3 oldVel = m_particleVelocity[i];
     float3 oldPos = m_particlePosition[i];
 
-    float3 newVel = oldVel + float3(0, m_gravity, 0) * m_deltaTime;
+    float3 newVel = oldVel + float3(0, 0, m_gravity) * m_deltaTime;
     float3 newPos = oldPos + newVel * m_deltaTime;
 
 	 // collision

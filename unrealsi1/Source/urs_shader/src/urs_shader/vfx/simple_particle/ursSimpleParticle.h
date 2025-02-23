@@ -18,27 +18,36 @@ public:
 	static constexpr int particleNoiseCount = 2048;
 
 public:
-	UPROPERTY(EditAnywhere) int maxParticleCount = 1000;
+	UPROPERTY(EditAnywhere) int maxParticleCount = 100;
 
-	UPROPERTY(EditAnywhere) float emitPerSecond = 100;
-	UPROPERTY(EditAnywhere) float emitPerSecondRemain;
-	UPROPERTY(EditAnywhere) float deltaTime;
-
-	UPROPERTY(EditAnywhere) FVector3f initVelocity			= FVector3f(0, 10, 0);
-	UPROPERTY(EditAnywhere) FVector3f initVelocityVariant	= FVector3f(1, 0.2f, 1);
+	UPROPERTY(EditAnywhere) FVector3f initVelocity			= FVector3f(0, 0, 10);
+	UPROPERTY(EditAnywhere) FVector3f initVelocityVariant	= FVector3f(1, 1, 0.2);
 
 	UPROPERTY(EditAnywhere) float initLifespan = 5;
 	UPROPERTY(EditAnywhere) float initLifespanVariant = 2;
 
-	UPROPERTY(EditAnywhere) float gravity = -9.8f;
-	UPROPERTY(EditAnywhere) float timeScale = 1;
-	UPROPERTY(EditAnywhere) float bounciness = 0.75f;
+	UPROPERTY(EditAnywhere) float emitPerSecond = 1;
+	UPROPERTY(EditAnywhere) float gravity		= -9.8f;
+	UPROPERTY(EditAnywhere) float timeScale		= 1;
+	UPROPERTY(EditAnywhere) float bounciness	= 0.75f;
 
-	UPROPERTY(EditAnywhere) int m_activeParticleCount	= 0;
-	UPROPERTY(EditAnywhere) int m_particleIndex			= 0;
+	UPROPERTY(EditAnywhere)	FVector3f		emitPosition;
+	UPROPERTY(EditAnywhere)	FTransform		plane;
 
-	UPROPERTY(VisibleAnywhere)	FVector3f	emitPosition;
-	UPROPERTY(EditAnywhere)		FTransform  plane;
+	UPROPERTY(EditAnywhere)	float			scale = 1.0f;
+	UPROPERTY(EditAnywhere)	FLinearColor	color = FLinearColor::Red;
+
+	UPROPERTY(EditAnywhere)	bool	tempIsUseOverrideInstCount	= false;
+	UPROPERTY(EditAnywhere)	int		overrideInstCount			= 0;
+
+	// ---
+	UPROPERTY(VisibleAnywhere)	float	deltaTime			= 0;
+	UPROPERTY(VisibleAnywhere)	int		newParticleStart	= 0;
+	UPROPERTY(VisibleAnywhere)	int		newParticleEnd		= 0;
+	UPROPERTY(VisibleAnywhere) float	emitPerSecondRemain = 0;
+
+	UPROPERTY(VisibleAnywhere) int m_activeParticleCount	= 0;
+	UPROPERTY(VisibleAnywhere) int m_particleIndex			= 0;
 };
 
 struct FursSimpleParticleParamsCache
@@ -77,7 +86,7 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "urs")	TObjectPtr<UStaticMesh> _mesh = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "urs")	bool tempIsQuadReverseDepth = false;
+	UPROPERTY(EditAnywhere, Category = "urs")	bool tempIsYAxisUp = false;
 
 public:
 	AursSimpleParticle();

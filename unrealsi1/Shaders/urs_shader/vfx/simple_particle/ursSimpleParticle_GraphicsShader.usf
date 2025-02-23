@@ -25,6 +25,9 @@ float4  m_color;
 float   m_scale;
 float3  m_objPos;
 
+float4x4 m_matrixVp;
+float4x4 m_matrixView;
+
 StructuredBuffer<float3> m_particlePosition;
 StructuredBuffer<float2> m_particleLifespan;
 
@@ -33,39 +36,43 @@ void VS_main(
         , out PixelIn o
     )
 {
+    ResolvedView = ResolveView();
+    
     float4  posOs       = input.vertex;
     float2  uv          = input.uv;
     uint    instanceId  = input.instanceId;
 
-    //float2  uv      = input.uv;
-
-    float4 posWs = float4(m_objPos + m_particlePosition[instanceId], 0);
-
-    float4 posVs = mul(View.TranslatedWorldToView, posWs);
+    float4 posWs = float4(m_objPos, 0) + float4(m_particlePosition[instanceId], 0);
+    float4 posVs = mul(posWs, m_matrixView);   // row-major, View.TranslatedWorldToView is weird, not actually a view matrix
     posVs += posOs * m_scale;
+    float4 posHcs = mul(posVs, View.ViewToClip);
 
-    posVs = mul(View.TranslatedWorldToView, posOs + float4(m_objPos, 0));
-
-    float4 posHcs = mul(View.ViewToClip, posVs);
-
-    posWs = posOs + float4(m_objPos, 0);
-    posHcs = mul(View.TranslatedWorldToClip, posWs);
-
-    float   life    = m_particleLifespan[instanceId].x / m_particleLifespan[instanceId].y;
+    float life = m_particleLifespan[instanceId].x / m_particleLifespan[instanceId].y;
     if (life <= 0) 
     {
         posHcs = float4(0,0,0,1);
     }
-    
+
+    // debug
+    #if 1
+    float3 translate = m_objPos;
+    translate.z = translate.z * 3 * instanceId;
+    posVs = mul((posOs + float4(translate, 0)) * m_scale, m_matrixView);
+    //posVs += posOs * m_scale;
+    posHcs = mul(posVs, View.ViewToClip);
+    #endif
+
     uint    ci      = instanceId % 8;
     float3  color   = saturate(float3(ci & 1, ci & 2, ci & 4));
     float   alpha   = 1 - (1 - life) * (1 - life);
     
     o.vertex    = posHcs;
     o.uv        = uv;
-    o.color     = float4(color, alpha);
+    o.color     = float4(color, alpha) * m_color;
 
-    o.color     = float4(color, 1);
+    o.color = instanceId % 2 == 0 ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
+
+    //o.color     = float4(color, 1);
 }
 
 void PS_main(
@@ -74,4 +81,5 @@ void PS_main(
     )   
 {
     oColor = input.color;
+    //oColor = m_color;
 }

@@ -11,7 +11,7 @@
 
 // CoreMesh.h
 
-inline FBufferRHIRef createQuad(FRHICommandListBase& rhiCmdList, bool isReverseZ, float ULeft = 0.0f, float URight = 1.0f, float VTop = 0.0f, float VBottom = 1.0f)
+inline FBufferRHIRef createQuad(FRHICommandListBase& rhiCmdList, bool isYAxisUp, float ULeft = 0.0f, float URight = 1.0f, float VTop = 0.0f, float VBottom = 1.0f)
 {
 	FRHIResourceCreateInfo CreateInfo(TEXT("TempMediaVertexBuffer"));
 	FBufferRHIRef VertexBufferRHI = rhiCmdList.CreateVertexBuffer(sizeof(FMediaElementVertex) * 4, BUF_Volatile, CreateInfo);
@@ -19,11 +19,20 @@ inline FBufferRHIRef createQuad(FRHICommandListBase& rhiCmdList, bool isReverseZ
 
 	FMediaElementVertex* Vertices = (FMediaElementVertex*)VoidPtr;
 
-	float depth = isReverseZ ? 0.0f : 1.0f;
-	Vertices[0].Position.Set(-1.0f,  1.0f, depth, 1.0f); // Top Left
-	Vertices[1].Position.Set( 1.0f,	 1.0f, depth, 1.0f); // Top Right
-	Vertices[2].Position.Set(-1.0f, -1.0f, depth, 1.0f); // Bottom Left
-	Vertices[3].Position.Set( 1.0f,	-1.0f, depth, 1.0f); // Bottom Right
+	if (isYAxisUp)
+	{
+		Vertices[0].Position.Set(-1.0f,  1.0f, 1.0, 1.0f); // Top Left
+		Vertices[1].Position.Set( 1.0f,	 1.0f, 1.0, 1.0f); // Top Right
+		Vertices[2].Position.Set(-1.0f, -1.0f, 1.0, 1.0f); // Bottom Left
+		Vertices[3].Position.Set( 1.0f,	-1.0f, 1.0, 1.0f); // Bottom Right
+	}
+	else
+	{
+		Vertices[0].Position.Set(-1.0f, 1.0f,  1.0f, 1.0f); // Top Left
+		Vertices[1].Position.Set( 1.0f,	1.0f,  1.0f, 1.0f); // Top Right
+		Vertices[2].Position.Set(-1.0f, 1.0f, -1.0f, 1.0f); // Bottom Left
+		Vertices[3].Position.Set( 1.0f,	1.0f, -1.0f, 1.0f); // Bottom Right
+	}
 	
 	Vertices[0].TextureCoordinate.Set(ULeft, VTop);
 	Vertices[1].TextureCoordinate.Set(URight, VTop);
@@ -39,6 +48,25 @@ UE::Math::TVector<TO>
 FVector3_cast(const UE::Math::TVector<FROM>& v)
 {
 	return UE::Math::TVector<TO>{ static_cast<TO>(v.X), static_cast<TO>(v.Y), static_cast<TO>(v.Z) };
+}
+
+template<class TO, class FROM>
+UE::Math::TVector4<TO>
+FVector4_cast(const UE::Math::TVector4<FROM>& v)
+{
+	return UE::Math::TVector4<TO>{ static_cast<TO>(v.X), static_cast<TO>(v.Y), static_cast<TO>(v.Z), static_cast<TO>(v.W) };
+}
+
+template<class TO, class FROM>
+UE::Math::TMatrix<TO>
+FMatrix4_cast(const UE::Math::TMatrix<FROM>& v)
+{
+	UE::Math::TMatrix<TO> o;
+	o.SetColumn(0, FVector4_cast(v.GetColumn(0)));
+	o.SetColumn(1, FVector4_cast(v.GetColumn(1)));
+	o.SetColumn(2, FVector4_cast(v.GetColumn(2)));
+	o.SetColumn(3, FVector4_cast(v.GetColumn(3)));
+	return o;
 }
 
 int roundUpToMultiple(int v, int n) {
@@ -148,16 +176,22 @@ AursSimpleParticle::setupShaderParams(FursSimpleParticleParams& out, FursSimpleP
 	out.m_initLifespan			= configs.initLifespan;
 	out.m_initLifespanVariant	= configs.initLifespanVariant;
 
-	out.m_deltaTime	= configs.deltaTime;
 	out.m_emitterPos	= configs.emitPosition;
 	out.m_gravity		= configs.gravity;
 	out.m_bounciness	= configs.bounciness;
+
+	out.m_deltaTime				= configs.deltaTime;
+	out.m_activeParticleCount	= configs.m_activeParticleCount;
+	out.m_newParticleStart		= configs.newParticleStart;
+	out.m_newParticleEnd		= configs.newParticleEnd;
+	out.m_particleNoiseCount	= configs.particleNoiseCount;
 
 	if (true) {
 		auto planeNormal = configs.plane.TransformVectorNoScale(FVector3d::UpVector);
 		planeNormal.Normalize();
 		//FVector4f plane = FVector4f{ planeNormal.X, planeNormal.Y, planeNormal.Z, 1.0 };
-		FVector4f plane = FVector4f{FVector3_cast<float>(planeNormal) , 1.0};
+		//FVector4f plane = FVector4f{FVector3_cast<float>(planeNormal) , 1.0};
+		FVector4f plane = FVector4f{FVector3f{planeNormal} , 1.0};
 
 		plane.W = configs.plane.GetTranslation().Dot(planeNormal);
 		out.m_colliderPlane = plane;
@@ -166,10 +200,10 @@ AursSimpleParticle::setupShaderParams(FursSimpleParticleParams& out, FursSimpleP
 	bool isCreateBuffer = false;
 	isCreateBuffer = !outParamsCache.particlePositionBuffer;
 
-	int roundUpParticleCount = roundUpToMultiple(configs.maxParticleCount, configs.numThreads);
-
 	if (isCreateBuffer)
 	{
+		int roundUpParticleCount = roundUpToMultiple(configs.maxParticleCount, configs.numThreads);
+
 		outRdgRscsRef.particlePositionBuffer = createStructuredBufferWithUav(&out.m_particlePosition, rdgBuilder, TEXT("m_particlePosition"), sizeof(FVector3f), roundUpParticleCount);
 		outRdgRscsRef.particleVelocityBuffer = createStructuredBufferWithUav(&out.m_particleVelocity, rdgBuilder, TEXT("m_particleVelocity"), sizeof(FVector3f), roundUpParticleCount);
 		outRdgRscsRef.particleLifespanBuffer = createStructuredBufferWithUav(&out.m_particleLifespan, rdgBuilder, TEXT("m_particleLifespan"), sizeof(FVector2f), roundUpParticleCount);
@@ -218,17 +252,18 @@ AursSimpleParticle::Tick(float DeltaTime)
 
 	if (RootComponent)
 	{
-		configs.emitPosition = FVector3_cast<float>(RootComponent->GetComponentLocation());
+		configs.emitPosition = FVector3f(RootComponent->GetComponentLocation());
 	}
 
-	configs.emitPerSecondRemain += DeltaTime * configs.emitPerSecond;
 	configs.deltaTime = DeltaTime * configs.timeScale;
+
+	configs.emitPerSecondRemain += DeltaTime * configs.emitPerSecond;
 
 	int newParticleCount = static_cast<int>(configs.emitPerSecondRemain);
 	configs.emitPerSecondRemain -= newParticleCount;
 
-	int newParticleStart = configs.m_particleIndex;
-	int newParticleEnd   = (configs.m_particleIndex + newParticleCount) % configs.maxParticleCount;
+	configs.newParticleStart	= configs.m_particleIndex;
+	configs.newParticleEnd		= (configs.m_particleIndex + newParticleCount) % configs.maxParticleCount;
 
 	configs.m_particleIndex += newParticleCount;
 	configs.m_particleIndex %= configs.maxParticleCount;
@@ -289,7 +324,7 @@ AursSimpleParticle::addSimulateParticlePass(FRDGBuilder& rdgBuilder, PassParams*
 	this->setupShaderParams(*params, this->_paramCache, outRdgRscsRef, rdgBuilder, configs);
 
 	TShaderMapRef<FursSimpleParticle_CS> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	FComputeShaderUtils::AddPass(rdgBuilder, RDG_EVENT_NAME("SimpleParticle_CS_Simulate"), ComputeShader, params, FIntVector(threadGroup, 1, 1));
+	FComputeShaderUtils::AddPass(rdgBuilder, RDG_EVENT_NAME("SimulateParticlePass"), ComputeShader, params, FIntVector(threadGroup, 1, 1));
 	#endif // 0
 }
 
@@ -299,6 +334,9 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* p
 	auto& rhiCmdList	= rdgBuilder.RHICmdList;
 	auto& sceneView		= *passParams->sceneView;
 	auto& rdgRscsRef	= passParams->rdgRscsRef;
+
+	if (!rdgRscsRef.particlePositionBuffer)
+		return;
 
 	//GraphBuilder.SetCommandListStat(GET_STATID(STAT_CLM_BasePass));
 	//RenderBasePassInternal(GraphBuilder, InViews, SceneTextures, BasePassRenderTargets, BasePassDepthStencilAccess, ForwardBasePassTextures, DBufferTextures, bDoParallelBasePass, bRenderLightmapDensity, InstanceCullingManager, bNaniteEnabled, NaniteBasePassShadingCommands, NaniteRasterResults);
@@ -321,8 +359,10 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* p
 	shaderParams->RenderTargets.DepthStencil	= FDepthStencilBinding(sceneTexs.Depth.Target, ERenderTargetLoadAction::ELoad, FExclusiveDepthStencil::DepthWrite_StencilNop);
 
 	shaderParams->View							= viewInfo.ViewUniformBuffer;
-	shaderParams->m_color						= FLinearColor::Red;
-	shaderParams->m_scale						= 1;
+	shaderParams->m_color						= passParams->configs.color;
+	shaderParams->m_scale						= passParams->configs.scale;
+	shaderParams->m_matrixVp					= FMatrix44f{viewInfo.ViewMatrices.GetViewProjectionMatrix()};	// TODO: remove
+	shaderParams->m_matrixView					= FMatrix44f{viewInfo.ViewMatrices.GetViewMatrix()};
 	shaderParams->m_objPos						= passParams->configs.emitPosition;		// TODO: remove
 
 	shaderParams->m_particlePosition			= rdgBuilder.CreateSRV(rdgRscsRef.particlePositionBuffer);
@@ -385,7 +425,6 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* p
 
 			#else
 
-
 			#if 0
 
 			FBufferRHIRef VertexBuffer = ::createQuad(rhiCmdList);
@@ -393,6 +432,7 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* p
 			rhiCmdList.DrawPrimitive(0, 2, 1);
 
 			#else
+
 			//static const uint16 Indices[] = { 0, 1, 2, 0, 2, 3 };
 			static const uint16 Indices[] = { 0, 2, 1, 1, 2, 3 };
 
@@ -402,12 +442,11 @@ AursSimpleParticle::addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* p
 			FPlatformMemory::Memcpy(VoidPtr2, Indices, sizeof(uint16) * 6);
 			rhiCmdList.UnlockBuffer(IndexBufferRHI);
 
-			FBufferRHIRef VertexBuffer = ::createQuad(rhiCmdList, this->tempIsQuadReverseDepth);
+			FBufferRHIRef VertexBuffer = ::createQuad(rhiCmdList, this->tempIsYAxisUp);
 			rhiCmdList.SetStreamSource(0, VertexBuffer, 0);
-			rhiCmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, 4, 0, 2, 1);
+			rhiCmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, 4, 0, 2, configs.tempIsUseOverrideInstCount ? configs.overrideInstCount : configs.m_activeParticleCount);
 
 			#endif // 0
-
 
 			#endif // 1
 		}

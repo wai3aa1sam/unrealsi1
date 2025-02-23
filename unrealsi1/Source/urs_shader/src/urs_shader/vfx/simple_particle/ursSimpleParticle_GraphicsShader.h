@@ -14,6 +14,8 @@ BEGIN_SHADER_PARAMETER_STRUCT(FursSimpleParticleParams_GraphicsShader, )
 	SHADER_PARAMETER(float,			m_scale)
 	SHADER_PARAMETER(FLinearColor,	m_color)
 	SHADER_PARAMETER(FVector3f,		m_objPos)
+	SHADER_PARAMETER(FMatrix44f,	m_matrixVp)
+	SHADER_PARAMETER(FMatrix44f,	m_matrixView)
 
 	// SHADER_PARAMETER_RDG_TEXTURE( Texture2D<float4>,	m_tex)
 	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, m_particlePosition)

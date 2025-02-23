@@ -98,7 +98,7 @@ void
 FursSimpleParticleSceneViewExt::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
 	Super::PrePostProcessPass_RenderThread(GraphBuilder, View, Inputs);
-
+	
 	auto* simpleParticle = _simpleParticle.Get();
 	if (simpleParticle)
 	{
