@@ -43,10 +43,6 @@ void CS_main(uint3 threadId : SV_DispatchThreadID)
     if (i >= m_activeParticleCount)
         return;
 
-    //m_particlePosition[i] = m_particlePosition[i].xzy;
-    //m_particleVelocity[i] = m_particlePosition[i].xzy;
-    //m_particleLifespan[i] = m_particleLifespan[i].yx;
-
     if ((m_newParticleEnd > m_newParticleStart && i >= m_newParticleStart && i < m_newParticleEnd)
 	  || (m_newParticleEnd < m_newParticleStart && i < m_newParticleEnd))
     {
@@ -67,7 +63,7 @@ void CS_main(uint3 threadId : SV_DispatchThreadID)
     float3 newVel = oldVel + float3(0, 0, m_gravity) * m_deltaTime;
     float3 newPos = oldPos + newVel * m_deltaTime;
 
-	 // collision
+	//  // collision
     float planeD = m_colliderPlane.w;
     float3 N = m_colliderPlane.xyz;
 

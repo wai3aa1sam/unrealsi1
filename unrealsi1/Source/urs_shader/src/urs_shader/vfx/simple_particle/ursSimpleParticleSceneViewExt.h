@@ -1,8 +1,9 @@
 #pragma once
 
-#include "urs_shader/common/urs_shader_common.h"
+#include "ursSimpleParticle_Common.h"
 
 class AursSimpleParticle;
+
 
 #if 0
 #pragma mark --- FursSimpleParticleSceneViewExt-Decl ---
@@ -12,11 +13,14 @@ class AursSimpleParticle;
 class URS_SHADER_API FursSimpleParticleSceneViewExt : public FursSceneViewExtensionBase
 {
 public:
-	using Super = FursSceneViewExtensionBase;
+	using Super			= FursSceneViewExtensionBase;
+	using PassParams	= FursSimpleParticleParams_Pass;
 
 public:
 	FursSimpleParticleSceneViewExt(const FAutoRegister& autoReg, AursSimpleParticle* simpleParticle);
 	virtual ~FursSimpleParticleSceneViewExt();
+
+	void requestExecute(const FursSimpleParticleConfigs& configs);
 
 public:
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override;
@@ -29,7 +33,7 @@ public:
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 	virtual void PreInitViews_RenderThread(FRDGBuilder& GraphBuilder) override;
 
-	virtual void PreRenderBasePass_RenderThread(FRDGBuilder& GraphBuilder, bool bDepthBufferIsPopulated) override;
+	//virtual void PreRenderBasePass_RenderThread(FRDGBuilder& GraphBuilder, bool bDepthBufferIsPopulated) override;
 	virtual void PostRenderBasePassDeferred_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView, const FRenderTargetBindingSlots& RenderTargets, TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures) override;
 	virtual void PostRenderBasePassMobile_RenderThread(FRHICommandList& RHICmdList, FSceneView& InView) override;
 
@@ -46,7 +50,12 @@ protected:
 	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const override { return true; }
 
 private:
+	void addSimulateParticlePass(FRDGBuilder& rdgBuilder, PassParams* passParams);
+	void addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* passParams);
+
+private:
 	TWeakObjectPtr<AursSimpleParticle> _simpleParticle = nullptr;
+	FursSimpleParticleParams_Pass _passParams;
 };
 
 #endif

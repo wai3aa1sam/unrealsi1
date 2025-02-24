@@ -28,6 +28,9 @@ float3  m_objPos;
 float4x4 m_matrixVp;
 float4x4 m_matrixView;
 
+Texture2D       m_tex;
+SamplerState    m_texSampler;
+
 StructuredBuffer<float3> m_particlePosition;
 StructuredBuffer<float2> m_particleLifespan;
 
@@ -36,15 +39,15 @@ void VS_main(
         , out PixelIn o
     )
 {
-    ResolvedView = ResolveView();
+    // ResolvedView = ResolveView();
     
     float4  posOs       = input.vertex;
     float2  uv          = input.uv;
     uint    instanceId  = input.instanceId;
 
-    float4 posWs = float4(m_objPos, 0) + float4(m_particlePosition[instanceId], 0);
-    float4 posVs = mul(posWs, m_matrixView);   // row-major, View.TranslatedWorldToView is weird, not actually a view matrix
-    posVs += posOs * m_scale;
+    float4 posWs = float4(m_particlePosition[instanceId], 1);
+    float4 posVs = mul(posWs, m_matrixView);    // row-major, View.TranslatedWorldToView is weird, not actually a view matrix
+    posVs += float4(posOs.xyz * m_scale, 0);    // billboard
     float4 posHcs = mul(posVs, View.ViewToClip);
 
     float life = m_particleLifespan[instanceId].x / m_particleLifespan[instanceId].y;
@@ -54,10 +57,10 @@ void VS_main(
     }
 
     // debug
-    #if 1
+    #if 0
     float3 translate = m_objPos;
-    translate.z = translate.z * 3 * instanceId;
-    posVs = mul((posOs + float4(translate, 0)) * m_scale, m_matrixView);
+    translate.z = translate.z * m_scale * instanceId;
+    posVs = mul((float4(posOs.xyz * m_scale + translate, 1)), m_matrixView);
     //posVs += posOs * m_scale;
     posHcs = mul(posVs, View.ViewToClip);
     #endif
@@ -70,8 +73,6 @@ void VS_main(
     o.uv        = uv;
     o.color     = float4(color, alpha) * m_color;
 
-    o.color = instanceId % 2 == 0 ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
-
     //o.color     = float4(color, 1);
 }
 
@@ -80,6 +81,10 @@ void PS_main(
         , out float4 oColor : SV_Target0
     )   
 {
-    oColor = input.color;
+    float2 uv = input.uv;
+    float4 tex = m_tex.Sample(m_texSampler, uv);
+
+    oColor = tex * input.color;
+    //oColor.a = 0;
     //oColor = m_color;
 }

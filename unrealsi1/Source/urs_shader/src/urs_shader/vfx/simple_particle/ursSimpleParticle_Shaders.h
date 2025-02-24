@@ -1,29 +1,33 @@
 #pragma once
 
-#include "urs_shader/common/urs_shader_common.h"
+#include "ursSimpleParticle_Common.h"
 
-/*
-* dumbass unreal cannot use prefix "_" as shader param, otherwise, it will recognize as a global param
-*/
-
-#if 1
-BEGIN_SHADER_PARAMETER_STRUCT(FursSimpleParticleParams_GraphicsShader, )
-
-	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-
-	SHADER_PARAMETER(float,			m_scale)
-	SHADER_PARAMETER(FLinearColor,	m_color)
-	SHADER_PARAMETER(FVector3f,		m_objPos)
-	SHADER_PARAMETER(FMatrix44f,	m_matrixVp)
-	SHADER_PARAMETER(FMatrix44f,	m_matrixView)
-
-	// SHADER_PARAMETER_RDG_TEXTURE( Texture2D<float4>,	m_tex)
-	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, m_particlePosition)
-	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float2>, m_particleLifespan) // x: remain, y: total
-
-	RENDER_TARGET_BINDING_SLOTS()
-END_SHADER_PARAMETER_STRUCT()
+#if 0
+#pragma mark --- FursSimpleParticle_CS-Decl ---
 #endif // 0
+#if 1
+
+class FursSimpleParticle_CS : public FGlobalShader
+{
+public:
+	// DECLARE_EXPORTED_GLOBAL_SHADER(FursSimpleParticle_CS, URS_SHADER_API);
+	DECLARE_GLOBAL_SHADER(FursSimpleParticle_CS)
+	SHADER_USE_PARAMETER_STRUCT(FursSimpleParticle_CS, FGlobalShader)
+
+public:
+	using FParameters = FursSimpleParticleParams_CS;
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, GetMaxSupportedFeatureLevel(Parameters.Platform));
+	}
+
+public:
+	void setupShaderParams(FParameters* outParams, FRDGBuilder& rdgBuilder, FursSimpleParticleParams_Pass& passParams);
+};
+
+#endif
 
 #if 0
 #pragma mark --- FursSimpleParticle_GraphicsShader-Decl ---
@@ -36,9 +40,10 @@ class FursSimpleParticle_GraphicsShader : public FGlobalShader
 public:
 	//using FParameters = FursSimpleParticleParams_GraphicsShader;
 
+public:
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		return true;
+		return IsFeatureLevelSupported(Parameters.Platform, GetMaxSupportedFeatureLevel(Parameters.Platform));
 	}
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
