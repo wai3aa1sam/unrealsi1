@@ -71,12 +71,14 @@ FursSceneViewExtensionBase::PreInitViews_RenderThread(FRDGBuilder& GraphBuilder)
 
 }
 
+#if URS_ENGINE_VERSION_5_4_OR_HIGHER
 void 
 FursSceneViewExtensionBase::PreRenderBasePass_RenderThread(FRDGBuilder& GraphBuilder, bool bDepthBufferIsPopulated)
 {
 	Super::PreRenderBasePass_RenderThread(GraphBuilder, bDepthBufferIsPopulated);
 
 }
+#endif
 
 void
 FursSceneViewExtensionBase::PostRenderBasePassDeferred_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView, const FRenderTargetBindingSlots& RenderTargets, TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures)

@@ -9,79 +9,6 @@ int roundUpToMultiple(int v, int n) {
 	return (v + n - 1) / n * n;
 }
 
-#if 1
-
-struct ursRdgUtil
-{
-public:
-	template<class T, class TAlloc>
-	FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, TAlloc>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None);
-	FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, const TCHAR* name, uint32 elementByteSize, uint32 elementCount, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None);
-
-	template<class T, class TAlloc>
-	FRDGBufferRef createStructuredBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, TAlloc>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None);
-	FRDGBufferRef createStructuredBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, const TCHAR* name, uint32 elementByteSize, uint32 elementCount, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None);
-
-	FRDGBufferRef registerExternalBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, TRefCountPtr<FRDGPooledBuffer>& pooledBuf);
-	FRDGBufferRef registerExternalBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, TRefCountPtr<FRDGPooledBuffer>& pooledBuf);
-};
-
-template<class T, class TAlloc>
-FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, TAlloc>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
-{
-	// using ElementType = decltype(data)::ElementType;
-	FRDGBufferRef buf = CreateStructuredBuffer(rdgBuilder, name, data, InitialDataFlags);
-	FRDGBufferSRVRef bufSrv = rdgBuilder.CreateSRV(buf, PF_R32_UINT);
-	*outSrv = bufSrv;
-	return buf;
-}
-
-FRDGBufferRef createStructuredBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, const TCHAR* name, uint32 elementByteSize, uint32 elementCount, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
-{
-	FRDGBufferDesc desc = FRDGBufferDesc::CreateStructuredDesc(elementByteSize, elementCount);
-	//*outBuf = rdgBuilder.CreateBuffer(desc, name);
-
-	FRDGBufferRef buf = rdgBuilder.CreateBuffer(desc, name);
-	*outSrv = rdgBuilder.CreateSRV(buf);
-	return buf;
-}
-
-template<class T, class TAlloc>
-FRDGBufferRef createStructuredBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, const TCHAR* name, const TArray<T, TAlloc>& data, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
-{
-	// using ElementType = decltype(data)::ElementType;
-	FRDGBufferRef buf = CreateStructuredBuffer(rdgBuilder, name, data, InitialDataFlags);
-	FRDGBufferUAVRef bufUav = rdgBuilder.CreateUAV(buf, PF_R32_UINT);
-	*outUav = bufUav;
-	return buf;
-}
-
-FRDGBufferRef createStructuredBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, const TCHAR* name, uint32 elementByteSize, uint32 elementCount, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None)
-{
-	FRDGBufferDesc desc = FRDGBufferDesc::CreateStructuredDesc(elementByteSize, elementCount);
-	//*outBuf = rdgBuilder.CreateBuffer(desc, name);
-
-	FRDGBufferRef buf = rdgBuilder.CreateBuffer(desc, name);
-	*outUav = rdgBuilder.CreateUAV(buf);
-	return buf;
-}
-
-FRDGBufferRef registerExternalBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, TRefCountPtr<FRDGPooledBuffer>& pooledBuf)
-{
-	auto* buf = rdgBuilder.RegisterExternalBuffer(pooledBuf);
-	*outUav = rdgBuilder.CreateUAV(buf);
-	return buf;
-}
-
-FRDGBufferRef registerExternalBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, TRefCountPtr<FRDGPooledBuffer>& pooledBuf)
-{
-	auto* buf = rdgBuilder.RegisterExternalBuffer(pooledBuf);
-	*outSrv = rdgBuilder.CreateSRV(buf);
-	return buf;
-}
-
-#endif // 1
-
 #if 0
 #pragma mark --- FursSimpleParticle_CS-Impl ---
 #endif // 0
@@ -130,9 +57,9 @@ FursSimpleParticle_CS::setupShaderParams(FParameters* outParams, FRDGBuilder& rd
 	{
 		int roundUpParticleCount = roundUpToMultiple(configs.maxParticleCount, configs.numThreads);
 
-		outRdgRscsRef.particlePositionBuffer = createStructuredBufferWithUav(&out.m_particlePosition, rdgBuilder, TEXT("simpPtcParticlePositionBuffer"), sizeof(FVector3f), roundUpParticleCount);
-		outRdgRscsRef.particleVelocityBuffer = createStructuredBufferWithUav(&out.m_particleVelocity, rdgBuilder, TEXT("simpPtcParticleVelocityBuffer"), sizeof(FVector3f), roundUpParticleCount);
-		outRdgRscsRef.particleLifespanBuffer = createStructuredBufferWithUav(&out.m_particleLifespan, rdgBuilder, TEXT("simpPtcParticleLifespan"),		sizeof(FVector2f), roundUpParticleCount);
+		outRdgRscsRef.particlePositionBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particlePosition, rdgBuilder, TEXT("simpPtcParticlePositionBuffer"), sizeof(FVector3f), roundUpParticleCount);
+		outRdgRscsRef.particleVelocityBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particleVelocity, rdgBuilder, TEXT("simpPtcParticleVelocityBuffer"), sizeof(FVector3f), roundUpParticleCount);
+		outRdgRscsRef.particleLifespanBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particleLifespan, rdgBuilder, TEXT("simpPtcParticleLifespan"),		sizeof(FVector2f), roundUpParticleCount);
 
 		TArray<FVector3f> noises;
 		noises.SetNum(configs.particleNoiseCount);
@@ -140,14 +67,14 @@ FursSimpleParticle_CS::setupShaderParams(FParameters* outParams, FRDGBuilder& rd
 		{
 			noises[i] = FVector3f{FMath::VRand()};
 		}
-		outRdgRscsRef.particleNoiseBuffer	 = createStructuredBufferWithSrv(&out.m_particleNoise,	 rdgBuilder, TEXT("simpPtcParticleNoise"), noises);
+		outRdgRscsRef.particleNoiseBuffer	 = ursRdgUtil::createStructuredBufferWithSrv(&out.m_particleNoise,	 rdgBuilder, TEXT("simpPtcParticleNoise"), noises);
 	}
 	else
 	{
-		outRdgRscsRef.particlePositionBuffer = registerExternalBufferWithUav(&out.m_particlePosition, rdgBuilder, outRdgRscsCache.particlePositionBuffer);
-		outRdgRscsRef.particleVelocityBuffer = registerExternalBufferWithUav(&out.m_particleVelocity, rdgBuilder, outRdgRscsCache.particleVelocityBuffer);
-		outRdgRscsRef.particleLifespanBuffer = registerExternalBufferWithUav(&out.m_particleLifespan, rdgBuilder, outRdgRscsCache.particleLifespanBuffer);
-		outRdgRscsRef.particleNoiseBuffer	 = registerExternalBufferWithSrv(&out.m_particleNoise,	  rdgBuilder, outRdgRscsCache.particleNoiseBuffer);
+		outRdgRscsRef.particlePositionBuffer = ursRdgUtil::registerExternalBufferWithUav(&out.m_particlePosition, rdgBuilder, outRdgRscsCache.particlePositionBuffer);
+		outRdgRscsRef.particleVelocityBuffer = ursRdgUtil::registerExternalBufferWithUav(&out.m_particleVelocity, rdgBuilder, outRdgRscsCache.particleVelocityBuffer);
+		outRdgRscsRef.particleLifespanBuffer = ursRdgUtil::registerExternalBufferWithUav(&out.m_particleLifespan, rdgBuilder, outRdgRscsCache.particleLifespanBuffer);
+		outRdgRscsRef.particleNoiseBuffer	 = ursRdgUtil::registerExternalBufferWithSrv(&out.m_particleNoise,	  rdgBuilder, outRdgRscsCache.particleNoiseBuffer);
 	}
 
 	outRdgRscsCache.particlePositionBuffer	= rdgBuilder.ConvertToExternalBuffer(outRdgRscsRef.particlePositionBuffer);

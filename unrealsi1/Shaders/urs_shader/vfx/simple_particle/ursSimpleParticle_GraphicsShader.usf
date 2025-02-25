@@ -85,6 +85,7 @@ void PS_main(
     float4 tex = m_tex.Sample(m_texSampler, uv);
 
     oColor = tex * input.color;
+    oColor.rgb *= tex.a;
     //oColor.a = 0;
     //oColor = m_color;
 }

@@ -16,9 +16,10 @@ AursSimpleParticle::AursSimpleParticle()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	//RootComponent = ursActorUtil::;
+	RootComponent = ursActorUtil::createDefault<USceneComponent>(this);
 
 	URS_CDO_FINDER(_configs.texture, "/Script/Engine.Texture2D'/Engine/EngineMaterials/T_Default_Material_Grid_M'");
+
 }
 
 void 
@@ -26,7 +27,23 @@ AursSimpleParticle::BeginPlay()
 {
 	Super::BeginPlay();
 
-	GEngine->GameUserSettings->SetFrameRateLimit(60);
+	if (GEngine) 
+	{
+		/*
+		* TODO: scoped set frame
+		*/
+		GEngine->bUseFixedFrameRate = false;
+		GEngine->FixedFrameRate = 60.0f;
+		GEngine->GameUserSettings->SetFrameRateLimit(60);
+		
+		//UGameUserSettings* gameUserSettings = UGameUserSettings::GetGameUserSettings();
+		//if (gameUserSettings)
+		//{
+		//  gameUserSettings->SetFrameRateLimit(60.0f);
+		//  gameUserSettings->ApplySettings(false);   // will save to GGameUserSettingsIni
+		//}
+		
+	}
 
 	_simpleParticleSvExt = FSceneViewExtensions::NewExtension<FursSimpleParticleSceneViewExt>(this);
 

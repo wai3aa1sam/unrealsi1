@@ -19,7 +19,7 @@ class UNREALSI1_API UursComboSystem : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(VisibleAnywhere) TOptional<float> comboWindowTimer	= 0.0;
+	TOptional<float> comboWindowTimer	= 0.0;
 	UPROPERTY(VisibleAnywhere) float			comboWindowDuration	= 0.1;
 
 public:

@@ -8,7 +8,7 @@
 #endif // 0
 #if 1
 
-struct UNREALSI1_API ursActorUtil
+struct URS_CORE_API ursActorUtil
 {
 public:
 	template<class T> static T* createDefault(AActor* actor);

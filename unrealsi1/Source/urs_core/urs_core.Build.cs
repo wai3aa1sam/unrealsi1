@@ -17,6 +17,7 @@ public class urs_core : ModuleRules
 			"SlateCore",	   
             "ApplicationCore",
             "RenderCore",
+            "Renderer",
             "RHI",
             "Projects",
 		// --- Default ---
