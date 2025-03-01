@@ -31,6 +31,16 @@ public class urs_core : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
+        if (this.Target.bBuildEditor)
+        {
+            PublicDependencyModuleNames.AddRange(new string[]
+                {
+                    "UnrealEd",
+                }
+            );
+
+        }
+
         // Uncomment if you are using Slate UI
         // PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 

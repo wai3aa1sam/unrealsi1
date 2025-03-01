@@ -7,15 +7,15 @@
 #endif // 0
 #if 1
 
-class FursSimpleParticle_CS : public FGlobalShader
+class FursSimpleParticle_CS : public FursGlobalShader
 {
 public:
+	using Super = FursGlobalShader;
+	using FParameters = FursSimpleParticleParams_CS;
+
 	// DECLARE_EXPORTED_GLOBAL_SHADER(FursSimpleParticle_CS, URS_SHADER_API);
 	DECLARE_GLOBAL_SHADER(FursSimpleParticle_CS)
-	SHADER_USE_PARAMETER_STRUCT(FursSimpleParticle_CS, FGlobalShader)
-
-public:
-	using FParameters = FursSimpleParticleParams_CS;
+	SHADER_USE_PARAMETER_STRUCT(FursSimpleParticle_CS, Super)
 
 public:
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -35,9 +35,10 @@ public:
 #if 1
 
 // use FMeshMaterialShader for static mesh
-class FursSimpleParticle_GraphicsShader : public FGlobalShader
+class FursSimpleParticle_GraphicsShader : public FursGlobalShader
 {
 public:
+	using Super = FursGlobalShader;
 	//using FParameters = FursSimpleParticleParams_GraphicsShader;
 
 public:
@@ -55,7 +56,7 @@ public:
 public:
 	FursSimpleParticle_GraphicsShader() = default;
 	FursSimpleParticle_GraphicsShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-		: FGlobalShader(Initializer)
+		: Super(Initializer)
 	{
 		//BindForLegacyShaderParameters<FParameters>(this, Initializer.PermutationId, Initializer.ParameterMap, false);
 		//.Bind(Initializer.ParameterMap, TEXT("_color"));

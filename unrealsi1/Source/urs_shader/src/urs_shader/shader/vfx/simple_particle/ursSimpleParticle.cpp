@@ -18,7 +18,7 @@ AursSimpleParticle::AursSimpleParticle()
 
 	RootComponent = ursActorUtil::createDefault<USceneComponent>(this);
 
-	URS_CDO_FINDER(_configs.texture, "/Script/Engine.Texture2D'/Engine/EngineMaterials/T_Default_Material_Grid_M'");
+	URS_CDO_FINDER(_configs.texture, "/Script/Engine.Texture2D'/Game/demo/test/vfx/texture/Shapes/circle'");
 
 }
 

@@ -1,9 +1,9 @@
 #include "ursSimpleParticle_Shaders.h"
 #include "ursSimpleParticle.h"
 
-IMPLEMENT_GLOBAL_SHADER(FursSimpleParticle_CS, "/urs_shader/vfx/simple_particle/ursSimpleParticle_CS.usf",				"CS_main", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FursSimpleParticle_VS, "/urs_shader/vfx/simple_particle/ursSimpleParticle_GraphicsShader.usf",	"VS_main", SF_Vertex);
-IMPLEMENT_GLOBAL_SHADER(FursSimpleParticle_PS, "/urs_shader/vfx/simple_particle/ursSimpleParticle_GraphicsShader.usf",	"PS_main", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FursSimpleParticle_CS, "/urs_shader/shader/vfx/simple_particle/ursSimpleParticle_CS.usf",				"CS_main", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FursSimpleParticle_VS, "/urs_shader/shader/vfx/simple_particle/ursSimpleParticle_GraphicsShader.usf",	"VS_main", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FursSimpleParticle_PS, "/urs_shader/shader/vfx/simple_particle/ursSimpleParticle_GraphicsShader.usf",	"PS_main", SF_Pixel);
 
 int roundUpToMultiple(int v, int n) {
 	return (v + n - 1) / n * n;
@@ -57,9 +57,9 @@ FursSimpleParticle_CS::setupShaderParams(FParameters* outParams, FRDGBuilder& rd
 	{
 		int roundUpParticleCount = roundUpToMultiple(configs.maxParticleCount, configs.numThreads);
 
-		outRdgRscsRef.particlePositionBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particlePosition, rdgBuilder, TEXT("simpPtcParticlePositionBuffer"), sizeof(FVector3f), roundUpParticleCount);
-		outRdgRscsRef.particleVelocityBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particleVelocity, rdgBuilder, TEXT("simpPtcParticleVelocityBuffer"), sizeof(FVector3f), roundUpParticleCount);
-		outRdgRscsRef.particleLifespanBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particleLifespan, rdgBuilder, TEXT("simpPtcParticleLifespan"),		sizeof(FVector2f), roundUpParticleCount);
+		outRdgRscsRef.particlePositionBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particlePosition, rdgBuilder, TEXT("ursParticlePositionBuffer"), sizeof(FVector3f), roundUpParticleCount);
+		outRdgRscsRef.particleVelocityBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particleVelocity, rdgBuilder, TEXT("ursParticleVelocityBuffer"), sizeof(FVector3f), roundUpParticleCount);
+		outRdgRscsRef.particleLifespanBuffer = ursRdgUtil::createStructuredBufferWithUav(&out.m_particleLifespan, rdgBuilder, TEXT("ursParticleLifespan"),		sizeof(FVector2f), roundUpParticleCount);
 
 		TArray<FVector3f> noises;
 		noises.SetNum(configs.particleNoiseCount);
@@ -67,7 +67,7 @@ FursSimpleParticle_CS::setupShaderParams(FParameters* outParams, FRDGBuilder& rd
 		{
 			noises[i] = FVector3f{FMath::VRand()};
 		}
-		outRdgRscsRef.particleNoiseBuffer	 = ursRdgUtil::createStructuredBufferWithSrv(&out.m_particleNoise,	 rdgBuilder, TEXT("simpPtcParticleNoise"), noises);
+		outRdgRscsRef.particleNoiseBuffer	 = ursRdgUtil::createStructuredBufferWithSrv(&out.m_particleNoise,	 rdgBuilder, TEXT("ursParticleNoise"), noises);
 	}
 	else
 	{

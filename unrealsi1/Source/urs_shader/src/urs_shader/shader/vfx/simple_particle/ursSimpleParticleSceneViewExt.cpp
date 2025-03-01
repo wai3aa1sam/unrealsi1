@@ -160,7 +160,7 @@ FursSimpleParticleSceneViewExt::addSimulateParticlePass(FRDGBuilder& rdgBuilder,
 	TShaderMapRef<FursSimpleParticle_CS> cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	auto* params = rdgBuilder.AllocParameters<FursSimpleParticle_CS::FParameters>();	// 
 	cs->setupShaderParams(params, rdgBuilder, _passParams);
-	FComputeShaderUtils::AddPass(rdgBuilder, RDG_EVENT_NAME("simpPtcSimulateParticlePass"), cs, params, FIntVector(configs.getThreadGroup(), 1, 1));
+	FComputeShaderUtils::AddPass(rdgBuilder, RDG_EVENT_NAME("ursSimulateParticlePass"), cs, params, FIntVector(configs.getThreadGroup(), 1, 1));
 }
 
 void 
@@ -206,7 +206,7 @@ FursSimpleParticleSceneViewExt::addRenderParticlePass(FRDGBuilder& rdgBuilder, P
 	shaderParams->m_particlePosition			= rdgBuilder.CreateSRV(rdgRscsRef.particlePositionBuffer);
 	shaderParams->m_particleLifespan			= rdgBuilder.CreateSRV(rdgRscsRef.particleLifespanBuffer);
 
-	rdgBuilder.AddPass(RDG_EVENT_NAME("simpPtcRenderParticlePass"), shaderParams, ERDGPassFlags::Raster,
+	rdgBuilder.AddPass(RDG_EVENT_NAME("ursRenderParticlePass"), shaderParams, ERDGPassFlags::Raster,
 		[vs, ps, shaderParams, passParams, this, &configs]
 		(FRHICommandList& rhiCmdList)
 		{
@@ -222,8 +222,8 @@ FursSimpleParticleSceneViewExt::addRenderParticlePass(FRDGBuilder& rdgBuilder, P
 			GraphicsPSOInit.bDepthBounds							= true;
 			GraphicsPSOInit.DepthStencilAccess						= FExclusiveDepthStencil::DepthRead;
 			GraphicsPSOInit.DepthStencilState						= TStaticDepthStencilState<false, CF_DepthNearOrEqual>::GetRHI();
-			GraphicsPSOInit.BlendState								= TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
-			GraphicsPSOInit.BlendState								= ursRenderUtil::getBlendStateRhi(EBlendMode::BLEND_Translucent);
+			GraphicsPSOInit.BlendState								= TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_SourceAlpha, BF_InverseDestAlpha>::GetRHI();
+			//GraphicsPSOInit.BlendState								= ursRenderUtil::getBlendStateRhi(EBlendMode::BLEND_Translucent);
 			GraphicsPSOInit.RasterizerState							= TStaticRasterizerState<FM_Solid, CM_CCW>::GetRHI();
 			GraphicsPSOInit.PrimitiveType							= PT_TriangleStrip;		// PT_TriangleStrip if 4 vtx, PT_TriangleList if with vtxBuf
 			GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI	= urs_g_vertexDecl_PosColor.vertexDeclRHI;

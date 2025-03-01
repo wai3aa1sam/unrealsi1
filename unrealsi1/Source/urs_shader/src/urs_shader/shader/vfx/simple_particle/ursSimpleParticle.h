@@ -14,7 +14,7 @@ class AursSimpleParticle;
 #if 1
 
 UCLASS()
-class URS_SHADER_API AursSimpleParticle : public AActor
+class URS_SHADER_API AursSimpleParticle : public AursActor
 {
 	GENERATED_BODY()
 public:	

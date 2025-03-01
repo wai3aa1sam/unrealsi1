@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urs_shader/common/urs_shader_common.h"
+#include "urs_shader/shader/ursGlobalShader.h"
 
 #include "ursSimpleParticle_Common.generated.h"
 
