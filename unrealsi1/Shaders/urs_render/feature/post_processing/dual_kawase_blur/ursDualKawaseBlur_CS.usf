@@ -1,0 +1,78 @@
+
+/*
+reference:
+~ https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_marius_2D00_notes.pdf
+*/
+
+#include "/urs_render/feature/post_processing/dual_kawase_blur/ursDualKawaseBlur_Common.ush"
+
+#ifndef URS_DKB_THREADS
+    #define URS_DKB_THREADS 8
+#endif
+
+float m_offsetFactor;
+
+float2 m_srcTexelSize;
+float2 m_dstTexelSize;
+float2 m_dstTexExtent;
+
+SamplerState            m_srcTexSampler;
+Texture2D<float4>       m_srcTex;
+RWTexture2D<float4>     m_dstTex;
+
+float4 sampleSrcTexture(float2 center, float2 offset)
+{
+    return m_srcTex.SampleLevel(m_srcTexSampler, center + offset * m_offsetFactor, 0.0);
+}
+
+[numthreads(URS_DKB_THREADS, URS_DKB_THREADS, 1)]
+void CS_downSampling(uint3 threadId : SV_DispatchThreadID)
+{
+    bool isInBoundary = all(threadId.xy < m_dstTexExtent);
+    if (!isInBoundary)
+        return;
+    
+    float2 srcUv = (threadId.xy + 0.5) * m_dstTexelSize;
+    float2 dstUv = threadId.xy;
+    
+    float2 srcHalfTexelSize = m_srcTexelSize / 2.0;
+    
+    float4 res = 0;
+    res += sampleSrcTexture(srcUv, float2(0.0, 0.0)) * 4.0;
+    res += sampleSrcTexture(srcUv, srcHalfTexelSize * float2(-1.0, -1.0));
+    res += sampleSrcTexture(srcUv, srcHalfTexelSize * float2( 1.0,  1.0));
+    res += sampleSrcTexture(srcUv, srcHalfTexelSize * float2( 1.0, -1.0));
+    res += sampleSrcTexture(srcUv, srcHalfTexelSize * float2(-1.0,  1.0));
+    res /= 8.0;
+    
+    m_dstTex[dstUv] = res;
+}
+
+
+[numthreads(URS_DKB_THREADS, URS_DKB_THREADS, 1)]
+void CS_upSampling(uint3 threadId : SV_DispatchThreadID)
+{
+    bool isInBoundary = all(threadId.xy < m_dstTexExtent);
+    if (!isInBoundary)
+        return;
+    
+    float2 srcUv = (threadId.xy + 0.5) * m_dstTexelSize;
+    float2 dstUv = threadId.xy;
+    
+    float2 srcTexelSize = m_srcTexelSize;
+    
+    float4 res = 0;
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2( 1.0,  1.0)) * 2.0;
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2( 1.0, -1.0)) * 2.0;
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2(-1.0,  1.0)) * 2.0;
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2(-1.0, -1.0)) * 2.0;
+    
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2( 0.0, -2.0));
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2( 0.0,  2.0));
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2( 2.0,  0.0));
+    res += sampleSrcTexture(srcUv, srcTexelSize * float2( 2.0,  0.0));
+    res /= 12.0;
+    
+    m_dstTex[dstUv] = res;
+}
+

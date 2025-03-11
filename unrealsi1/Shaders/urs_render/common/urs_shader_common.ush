@@ -1,0 +1,9 @@
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/VertexFactoryCommon.ush"
+
+#define URS_SHADER 1
+#include "/urs_render/common/ursShader_Common.ush"
+#include "/urs_render/common/urs_material_common.ush"
+

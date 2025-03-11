@@ -14,7 +14,7 @@ public class unrealsi1EditorTarget : TargetRules
 		{
             "unrealsi1",
             "urs_core",
-            "urs_shader",
+            "urs_render",
         });
     }
 }

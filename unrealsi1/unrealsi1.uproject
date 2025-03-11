@@ -15,7 +15,7 @@
 			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "urs_shader",
+			"Name": "urs_render",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
 		}

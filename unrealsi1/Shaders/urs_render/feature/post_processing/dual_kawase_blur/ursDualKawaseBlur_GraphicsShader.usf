@@ -1,0 +1,86 @@
+
+#include "/urs_render/feature/post_processing/dual_kawase_blur/ursDualKawaseBlur_Common.ush"
+
+struct VertexIn // FVertexFactoryInput
+{
+    float4 vertex	: ATTRIBUTE0;   // only can use ATTRIBUTE ## N, (POSITION, TEXCOORD0, ...) don't work
+    float2 uv		: ATTRIBUTE1;
+
+	uint instanceId : SV_InstanceID;
+};
+
+struct PixelIn
+{
+    float4 vertex	: SV_POSITION;
+    float2 uv		: TEXCOORD0;
+    float4 color	: COLOR;
+};
+
+float4  m_color;
+float   m_scale;
+float3  m_objPos;
+
+float4x4 m_matrixVp;
+float4x4 m_matrixView;
+
+Texture2D       m_tex;
+SamplerState    m_texSampler;
+
+StructuredBuffer<float3> m_particlePosition;
+StructuredBuffer<float2> m_particleLifespan;
+
+void VS_main(
+        in VertexIn input
+        , out PixelIn o
+    )
+{
+    // ResolvedView = ResolveView();
+    
+    float4  posOs       = input.vertex;
+    float2  uv          = input.uv;
+    uint    instanceId  = input.instanceId;
+
+    float4 posWs = float4(m_particlePosition[instanceId], 1);
+    float4 posVs = mul(posWs, m_matrixView);    // row-major, View.TranslatedWorldToView is weird, not actually a view matrix
+    posVs += float4(posOs.xyz * m_scale, 0);    // billboard
+    float4 posHcs = mul(posVs, View.ViewToClip);
+
+    float life = m_particleLifespan[instanceId].x / m_particleLifespan[instanceId].y;
+    if (life <= 0) 
+    {
+        posHcs = float4(0,0,0,1);
+    }
+
+    // debug
+    #if 0
+    float3 translate = m_objPos;
+    translate.z = translate.z * m_scale * instanceId;
+    posVs = mul((float4(posOs.xyz * m_scale + translate, 1)), m_matrixView);
+    //posVs += posOs * m_scale;
+    posHcs = mul(posVs, View.ViewToClip);
+    #endif
+
+    uint    ci      = instanceId % 8;
+    float3  color   = saturate(float3(ci & 1, ci & 2, ci & 4));
+    float   alpha   = 1 - (1 - life) * (1 - life);
+    
+    o.vertex    = posHcs;
+    o.uv        = uv;
+    o.color     = float4(color, alpha) * m_color;
+
+    //o.color     = float4(color, 1);
+}
+
+void PS_main(
+        PixelIn input
+        , out float4 oColor : SV_Target0
+    )   
+{
+    float2 uv = input.uv;
+    float4 tex = m_tex.Sample(m_texSampler, uv);
+
+    oColor = tex * input.color;
+    oColor.rgb *= tex.a;
+    //oColor.a = 0;
+    //oColor = m_color;
+}

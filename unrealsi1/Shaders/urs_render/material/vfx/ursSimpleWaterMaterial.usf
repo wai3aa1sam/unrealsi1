@@ -1,0 +1,73 @@
+
+#include "/urs_render/common/urs_material_common.ush"
+
+#define PS_MAIN Ps_main
+
+FMaterialAttributes Ps_main(FMaterialPixelParameters Parameters
+                , float2 _uv
+                , URS_TEXTURE_2D_PARAMS(_maskTex)
+                , URS_TEXTURE_2D_PARAMS(_waterTex)
+                , URS_TEXTURE_2D_PARAMS(_flowMap)
+                , float _intersect
+                , float _fresnel
+                , float _emissivity
+                , float _waterColorIntensity
+                , float _waterEdge, float _waterEdgeSpeed
+                , float _waterFlow, float _waterFlowPeriod
+                , float _time
+                , Color4f _waterColor, Color4f _waterEdgeColor
+            )
+{
+    float4 o = 0;
+
+    float2  uv      = _uv;
+
+    float   time    = _time;
+    float   mask    = URS_TEXTURE_2D_SAMPLE(_maskTex, URS_TRANSFORM_UV(uv, _maskTex) - time * _waterEdgeSpeed).r;
+
+    float fresnel = Lighting_fresnel(Parameters, _fresnel);
+
+    float2 screenUv = SpaceTransform_caclSceneUv(Parameters);
+    float isIntersect = VfxUtil_isIntersect(Parameters, screenUv, _intersect);
+
+    // TODO: add a _waterEdgeDepth to control the edge size 
+    // ([0, 0.1] water edge, [0.1, 0.4] refraction
+    float edgeFilter = step(mask, _waterEdge);
+    float filteredWaterEdge = lerp(isIntersect, 1, edgeFilter);     
+    float waterDepth        = 1 - isIntersect;
+
+    /*
+    repeat flowMAp A->B then B->A 
+    */
+    /*
+    references:
+    ~ https://www.youtube.com/watch?v=Z0AKzsu-uLs&list=PLeGk08zVu457mrsW8YBJxWTFucr0myxoM&index=3
+    */
+    float nFlowCycles = time / _waterFlowPeriod;    // linear increase
+    float flow0 = (nFlowCycles) % 2;
+    float flow1 = (nFlowCycles + 1) % 2;
+    float flowWeight = abs(nFlowCycles % 2 - 1);    // triangle wave
+
+    float4 flow = URS_TEXTURE_2D_SAMPLE(_flowMap, uv) * 2 - 1;
+    float4 waterLayer0 = URS_TEXTURE_2D_SAMPLE(_waterTex, uv + flow.xy * flow0 * _waterFlow);
+    float4 waterLayer1 = URS_TEXTURE_2D_SAMPLE(_waterTex, uv + flow.xy * flow1 * _waterFlow);
+
+    //waterLayer0 = float4(1, 0, 0, 1);
+    //waterLayer1 = float4(0, 1, 0, 1);
+
+    float4 water = lerp(waterLayer0, waterLayer1, flowWeight);
+
+    FMaterialAttributes output;
+    output.BaseColor        = lerp(water.rgb, _waterColor.rgb, _waterColorIntensity);
+    output.EmissiveColor    = _waterEdgeColor.rgb * (fresnel * isIntersect * edgeFilter) * _emissivity;
+    output.Opacity          = lerp(waterDepth, filteredWaterEdge, isIntersect);
+
+    //output.BaseColor        = edgeFilter;
+
+    return output;
+}
+
+#define URS_MATERIAL_RETURN return PS_MAIN(Parameters, _uv, URS_TEXTURE_2D_ARGS(_maskTex), URS_TEXTURE_2D_ARGS(_waterTex), URS_TEXTURE_2D_ARGS(_flowMap) \
+, _intersect, _fresnel, _emissivity, _waterColorIntensity, _waterEdge, _waterEdgeSpeed, _waterFlow, _waterFlowPeriod \
+, _time, _waterColor, _waterEdgeColor); \
+// ---
