@@ -47,5 +47,23 @@ ursRdgUtil::registerExternalBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& r
 	return buf;
 }
 
+FRDGTextureRef 
+ursRdgUtil::createTexture2DWithUav(FRDGTextureUAV*& outUav, FRDGBuilder& rdgBuilder, const TCHAR* name, FIntPoint extent, EPixelFormat format, FClearValueBinding clearValue, ETextureCreateFlags flags)
+{
+	auto desc = FRDGTextureDesc::Create2D(extent, format, clearValue, flags);
+
+	FRDGTextureRef tex = rdgBuilder.CreateTexture(desc, name);
+	outUav = rdgBuilder.CreateUAV(tex);
+	return tex;
+}
+
+FRDGTextureUAV* 
+ursRdgUtil::createUavWithTexture2D(FRDGTextureRef& outTex, FRDGBuilder& rdgBuilder, const TCHAR* name, FIntPoint extent, EPixelFormat format, FClearValueBinding clearValue, ETextureCreateFlags flags)
+{
+	FRDGTextureUAV* uav = nullptr;
+	outTex = createTexture2DWithUav(uav, rdgBuilder, name, extent, format, clearValue, flags);
+	return uav;
+}
+
 
 #endif

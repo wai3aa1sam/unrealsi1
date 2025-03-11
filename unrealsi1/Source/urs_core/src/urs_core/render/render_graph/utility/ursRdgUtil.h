@@ -20,6 +20,11 @@ public:
 
 	static FRDGBufferRef registerExternalBufferWithUav(FRDGBufferUAV** outUav, FRDGBuilder& rdgBuilder, TRefCountPtr<FRDGPooledBuffer>& pooledBuf);
 	static FRDGBufferRef registerExternalBufferWithSrv(FRDGBufferSRV** outSrv, FRDGBuilder& rdgBuilder, TRefCountPtr<FRDGPooledBuffer>& pooledBuf);
+
+	static FRDGTextureRef  createTexture2DWithUav(FRDGTextureUAV*& outUav, FRDGBuilder& rdgBuilder, const TCHAR* name, FIntPoint extent, EPixelFormat format, FClearValueBinding clearValue, ETextureCreateFlags flags);
+	static FRDGTextureUAV* createUavWithTexture2D(FRDGTextureRef& outTex,  FRDGBuilder& rdgBuilder, const TCHAR* name, FIntPoint extent, EPixelFormat format, FClearValueBinding clearValue, ETextureCreateFlags flags);
+
+	//static FRDGTextureRef createTextureWithSrv(FRDGTextureSRV** outSrv, FRDGBuilder& rdgBuilder, const TCHAR* name, uint32 elementByteSize, uint32 elementCount, ERDGInitialDataFlags InitialDataFlags = ERDGInitialDataFlags::None);
 };
 
 template<class T, class TAlloc> inline

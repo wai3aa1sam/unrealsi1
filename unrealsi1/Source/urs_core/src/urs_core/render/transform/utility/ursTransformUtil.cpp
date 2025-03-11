@@ -1,12 +1,17 @@
+
 #include "ursTransformUtil.h"
 
+#if WITH_EDITOR
 #include <Editor/UnrealEd/Public/EditorViewportClient.h>
 #include <Editor/UnrealEd/Public/LevelEditorViewport.h>
+#endif // WITH_EDITOR
 
 #if 0
 #pragma mark --- ursTransformUtil-Impl ---
 #endif // 0
 #if 1
+
+#if WITH_EDITOR
 
 void 
 ursTransformUtil::deprojectScreenToWorld_EditorViewport(FVector& outWorldPos, FVector& outWorldDir, const FIntPoint& screenPos, FEditorViewportClient* client)
@@ -45,5 +50,31 @@ ursTransformUtil::deprojectMousePosToWorld_EditorViewport(FVector& outWorldPos, 
 	return true;
 }
 
+#else
+
+void 
+ursTransformUtil::deprojectScreenToWorld_EditorViewport(FVector& outWorldPos, FVector& outWorldDir, const FIntPoint& screenPos, FEditorViewportClient* client)
+{
+
+}
+
+bool 
+ursTransformUtil::deprojectScreenToWorld_EditorViewport(FVector& outWorldPos, FVector& outWorldDir, const FIntPoint& screenPos)
+{
+	return false;
+}
+
+bool 
+ursTransformUtil::deprojectMousePosToWorld_EditorViewport(FVector& outWorldPos, FVector& outWorldDir)
+{
+	return false;
+}
+
+#endif // 0
+
+
 
 #endif
+
+
+

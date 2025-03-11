@@ -177,6 +177,13 @@ struct fmt::formatter<FRotator> : public ursFormatterBase {
 	}
 };
 
+template<class T>
+struct fmt::formatter<UE::Math::TIntPoint<T> > : public ursFormatterBase {
+	auto format(const UE::Math::TIntPoint<T>& v, fmt::format_context& ctx) const {
+		return fmt::format_to(ctx.out(), "[{}, {}]", v.X, v.Y);
+	}
+};
+
 template<>
 struct fmt::formatter<FKey> : public fmt::formatter<FString> {
 	auto format(const FKey& v, fmt::format_context& ctx) const {
