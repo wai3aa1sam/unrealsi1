@@ -4,24 +4,34 @@
 
 #include "ursDualKawaseBlur_Common.generated.h"
 
+class AursSimpleParticle;
+class FursDualKawaseBlurSceneViewExt;
+
 USTRUCT()
 struct URS_RENDER_API FursDualKawaseBlurConfigs
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(EditAnywhere) uint32	numThreads		= 8;
-
-	UPROPERTY(EditAnywhere) uint8	isExecuteBlur	: 1;
-	UPROPERTY(EditAnywhere) uint8	isCopyToScreen	: 1;
-	UPROPERTY(EditAnywhere) float	demoSpeed		= 1.0;
+	UPROPERTY(EditAnywhere) uint32	numThreads			= 8;
+	UPROPERTY(EditAnywhere) uint8	isExecuteBlur		: 1;
 
 	UPROPERTY(EditAnywhere, meta=(ClampMin = 1, ClampMax = 255)) float	maxBlurRadius	= 15.0;
 	UPROPERTY(EditAnywhere, meta=(ClampMin = 1, ClampMax = 255)) float	blurRadius		= 15.0;
 	UPROPERTY(EditAnywhere) float	sampleOffset	= 1.0;
 
+	UPROPERTY(EditAnywhere) TObjectPtr<AursSimpleParticle>	demoActor = nullptr;
+	UPROPERTY(EditAnywhere) float							demoTimeScale		= 1.0;
+	UPROPERTY(EditAnywhere)	float							demoBlurTimer		= 0.0;
+	UPROPERTY(EditAnywhere)	float							demoBlurSpeed		= 1.0;
+	UPROPERTY(EditAnywhere)	uint8							isShowDemo			: 1;
+	UPROPERTY(EditAnywhere)	uint8							isProfile			: 1;
+	UPROPERTY(EditAnywhere) uint8							isRenderToScreen	: 1;
 
 public:
 	FursDualKawaseBlurConfigs() : isExecuteBlur(false) {}
+
+public:
+	void tick(float dt, FursDualKawaseBlurSceneViewExt& dkBlurSVExt);
 };
 
 struct FursDualKawaseBlurParams_SamplingPass
@@ -84,8 +94,10 @@ END_SHADER_PARAMETER_STRUCT()
 #if 1
 BEGIN_SHADER_PARAMETER_STRUCT(FursDualKawaseBlurParams_GraphicsShader, )
 
-	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-	SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float4>, m_colorTex)
+	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters,	View)
+
+	SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float4>,			m_srcTex)
+	SHADER_PARAMETER_SAMPLER(SamplerState,						m_srcTexSampler)
 
 	RENDER_TARGET_BINDING_SLOTS()
 

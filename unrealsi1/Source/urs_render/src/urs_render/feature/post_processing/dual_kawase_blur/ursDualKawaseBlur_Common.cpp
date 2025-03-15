@@ -1,6 +1,42 @@
 #include "ursDualKawaseBlur_Common.h"
 
-void FursDualKawaseBlurParams_SamplingPass::create(FRDGPassRef lastPass_, uint32 iterIndex_, float offsetFactor_, FRDGTextureRef srcTex_, bool isDownSampling_)
+#include "urs_render/feature/particle_system/simple_particle/ursSimpleParticle.h"
+#include "ursDualKawaseBlurSceneViewExt.h"
+
+void 
+FursDualKawaseBlurConfigs::tick(float dt, FursDualKawaseBlurSceneViewExt& dkBlurSVExt)
+{
+	if (isShowDemo && demoActor)
+	{
+		#if 0
+		if (_demoCurve)
+		{
+			//float demoCurveMinTime, demoCurveMaxTime;
+			//_demoCurve->GetTimeRange(demoCurveMinTime, demoCurveMaxTime);
+			//float demoCurveLength = demoCurveMaxTime - demoCurveMinTime;
+
+			////float TimeNormalized = FMath::Clamp(_demoCurveTimer / demoCurveLength, 0.0f, 1.0f);
+			//float demoCurveTime = demoCurveMinTime + FMath::Fmod(_demoCurveTimer, demoCurveLength);
+			//_demoValue = _demoCurve->GetFloatValue(demoCurveTime);
+		}
+		#endif // 0
+		if (demoBlurSpeed > 0.0)
+		{
+			blurRadius = FMath::Clamp(maxBlurRadius * ((FMath::Sin(demoBlurTimer * demoBlurSpeed) + 1.0f) * 0.5f), 1, maxBlurRadius);
+		}
+
+		demoBlurTimer += dt * demoTimeScale;
+		demoActor->Tick(dt);
+	}
+
+	if (isExecuteBlur)
+	{
+		dkBlurSVExt.requestExecute(*this);
+	}
+}
+
+void 
+FursDualKawaseBlurParams_SamplingPass::create(FRDGPassRef lastPass_, uint32 iterIndex_, float offsetFactor_, FRDGTextureRef srcTex_, bool isDownSampling_)
 {
 	URS_ASSERT(srcTex_->Desc.IsTexture2D());
 
@@ -46,3 +82,4 @@ FursDualKawaseBlurParams_SamplingPass::getDstTextureNameTo(FString& out) const
 		: ursFormat("ursDKBlur_UpSampling_Texture_{}", iterIndex)
 	;
 }
+

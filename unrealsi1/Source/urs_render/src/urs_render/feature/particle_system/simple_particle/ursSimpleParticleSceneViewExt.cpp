@@ -97,21 +97,6 @@ FursSimpleParticleSceneViewExt::PostRenderBasePassDeferred_RenderThread(FRDGBuil
 {
 	Super::PostRenderBasePassDeferred_RenderThread(GraphBuilder, InView, RenderTargets, SceneTextures);
 
-
-	check(IsInRenderingThread());
-
-	if (!_passParams.configs.isValid())
-		return;
-
-	_passParams.sceneView = &InView;
-
-	/*bool isInvalidMesh = !_mesh || !_mesh->GetRenderData() || _mesh->GetRenderData()->LODResources.IsEmpty();
-	if (isInvalidMesh)
-	return;*/
-
-	auto& rdgBuilder = GraphBuilder;
-	addSimulateParticlePass(rdgBuilder, &_passParams);
-	addRenderParticlePass(rdgBuilder,	&_passParams);
 }
 
 void 
@@ -126,6 +111,7 @@ FursSimpleParticleSceneViewExt::PrePostProcessPass_RenderThread(FRDGBuilder& Gra
 {
 	Super::PrePostProcessPass_RenderThread(GraphBuilder, View, Inputs);
 	
+	execute(GraphBuilder, View);
 }
 
 void
@@ -150,22 +136,34 @@ FursSimpleParticleSceneViewExt::PostRenderView_RenderThread(FRDGBuilder& GraphBu
 }
 
 void 
+FursSimpleParticleSceneViewExt::execute(FRDGBuilder& GraphBuilder, const FSceneView& View)
+{
+	check(IsInRenderingThread());
+
+	if (!_passParams.configs.isValid())
+		return;
+
+	_passParams.sceneView = &View;
+
+	/*bool isInvalidMesh = !_mesh || !_mesh->GetRenderData() || _mesh->GetRenderData()->LODResources.IsEmpty();
+	if (isInvalidMesh)
+	return;*/
+
+	auto& rdgBuilder = GraphBuilder;
+	addSimulateParticlePass(rdgBuilder, &_passParams);
+	addRenderParticlePass(rdgBuilder,	&_passParams);
+}
+
+void
 FursSimpleParticleSceneViewExt::addSimulateParticlePass(FRDGBuilder& rdgBuilder, PassParams* passParams)
 {
-	// TODO: a scoped stat
-	//RDG_CSV_STAT_EXCLUSIVE_SCOPE(GraphBuilder, RenderBasePass);
-	//SCOPED_NAMED_EVENT(FDeferredShadingSceneRenderer_RenderBasePass, FColor::Emerald);
-
 	//SCOPED_NAMED_EVENT_TEXT("SubmissionQueue_Process", FColor::Turquoise);
 	//SCOPE_CYCLE_COUNTER(STAT_D3D12Submit);
 	//LLM_SCOPE_BYNAME(TEXT("RHIMisc/ProcessSubmissionQueue"));
 
 	const auto& configs = passParams->configs;
 
-	if (!configs.isValid())
-		return;
-
-	RDG_GPU_STAT_SCOPE(rdgBuilder, ursSimpleParticle_SimulateParticle);
+	URS_GPU_PROFILE_SCOPE(rdgBuilder, ursSimpleParticle_SimulateParticle);
 
 	TShaderMapRef<FursSimpleParticle_CS> cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	auto* params = rdgBuilder.AllocParameters<FursSimpleParticle_CS::FParameters>();	// 
@@ -192,7 +190,7 @@ FursSimpleParticleSceneViewExt::addRenderParticlePass(FRDGBuilder& rdgBuilder, P
 	if (!rdgRscsRef.particlePositionBuffer)
 		return;
 
-	RDG_GPU_STAT_SCOPE(rdgBuilder, ursSimpleParticle_RenderParticle);
+	URS_GPU_PROFILE_SCOPE(rdgBuilder, ursSimpleParticle_RenderParticle);
 
 	#if 1
 	FGlobalShaderMap* shaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);

@@ -6,7 +6,7 @@ IMPLEMENT_GLOBAL_SHADER(FursDualKawaseBlur_DownSampling_CS,	"/urs_render/feature
 IMPLEMENT_GLOBAL_SHADER(FursDualKawaseBlur_UpSampling_CS,	"/urs_render/feature/post_processing/dual_kawase_blur/ursDualKawaseBlur_CS.usf", "CS_upSampling",	SF_Compute);
 
 //IMPLEMENT_GLOBAL_SHADER(FursDualKawaseBlur_VS, "/urs_render/feature/post_processing/dual_kawase_blur/ursDualKawaseBlur_GraphicsShader.usf",	"VS_main", SF_Vertex);
-//IMPLEMENT_GLOBAL_SHADER(FursDualKawaseBlur_PS, "/urs_render/feature/post_processing/dual_kawase_blur/ursDualKawaseBlur_GraphicsShader.usf",	"PS_main", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FursDualKawaseBlur_PS, "/urs_render/feature/post_processing/dual_kawase_blur/ursDualKawaseBlur_GraphicsShader.usf",	"PS_main", SF_Pixel);
 
 template<class TTo, class TFrom>
 UE::Math::TIntPoint<TTo>

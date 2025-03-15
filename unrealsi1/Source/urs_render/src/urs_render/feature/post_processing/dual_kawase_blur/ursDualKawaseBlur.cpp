@@ -28,13 +28,14 @@ AursDualKawaseBlur::BeginPlay()
 		GEngine->GameUserSettings->SetFrameRateLimit(60);
 	}
 
-	_dkBlurSVExt = FSceneViewExtensions::NewExtension<FursDualKawaseBlurSceneViewExt>(this);
-
 	if (auto* world = GetWorld())
 	{
-		_demoActor = GetWorld()->SpawnActor<AursSimpleParticle>();
-		_demoActor->SetActorTickEnabled(false);
+		auto& configs = _configs;
+		configs.demoActor = GetWorld()->SpawnActor<AursSimpleParticle>();
+		configs.demoActor->SetActorTickEnabled(false);
 	}
+
+	_dkBlurSVExt = FSceneViewExtensions::NewExtension<FursDualKawaseBlurSceneViewExt>(this);
 }
 
 void 
@@ -43,31 +44,7 @@ AursDualKawaseBlur::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	auto& configs = _configs;
-
-	if (isShowDemo && _demoActor)
-	{
-		#if 0
-		if (_demoCurve)
-		{
-			//float demoCurveMinTime, demoCurveMaxTime;
-			//_demoCurve->GetTimeRange(demoCurveMinTime, demoCurveMaxTime);
-			//float demoCurveLength = demoCurveMaxTime - demoCurveMinTime;
-
-			////float TimeNormalized = FMath::Clamp(_demoCurveTimer / demoCurveLength, 0.0f, 1.0f);
-			//float demoCurveTime = demoCurveMinTime + FMath::Fmod(_demoCurveTimer, demoCurveLength);
-			//_demoValue = _demoCurve->GetFloatValue(demoCurveTime);
-		}
-		#endif // 0
-		configs.blurRadius = FMath::Clamp(configs.maxBlurRadius * ((FMath::Sin(demoTimer * demoBlurSpeed) + 1.0f) * 0.5f), 1, configs.maxBlurRadius);
-		demoTimer += DeltaTime;
-		
-		_demoActor->Tick(DeltaTime);
-	}
-
-	if (configs.isExecuteBlur)
-	{
-		_dkBlurSVExt->requestExecute(configs);
-	}
+	configs.tick(DeltaTime, *_dkBlurSVExt);
 }
 
 #endif

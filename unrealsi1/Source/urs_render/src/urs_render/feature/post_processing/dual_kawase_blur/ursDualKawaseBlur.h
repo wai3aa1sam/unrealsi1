@@ -24,9 +24,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "urs")	TObjectPtr<UTextureRenderTarget2D>		renderTarget	= nullptr;
 	//UPROPERTY(EditAnywhere, Category = "urs")	TObjectPtr<UCurveFloat>					demoAnimCurve	= nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "urs")	float demoTimer		= 0.0;
-	UPROPERTY(EditAnywhere, Category = "urs")	float demoBlurSpeed = 1.0;
-	UPROPERTY(EditAnywhere, Category = "urs")	uint8 isShowDemo		: 1;
 
 public:
 	AursDualKawaseBlur();
@@ -37,7 +34,6 @@ protected:
 
 private:
 	TSharedPtr<FursDualKawaseBlurSceneViewExt> _dkBlurSVExt;
-	UPROPERTY(EditAnywhere, Category = "urs") TObjectPtr<AursSimpleParticle> _demoActor = nullptr;
 };
 
 #endif

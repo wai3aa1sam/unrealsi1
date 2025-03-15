@@ -1,9 +1,3 @@
-
-/*
-* reference:
-* ~ https://github.com/SimpleTalkCpp/workshop-2021-07-unity-shader
-*/
-
 #include "/urs_render/common/urs_shader_common.ush"
 
 float3 m_initVelocity;

@@ -3,9 +3,20 @@
 #include "ursDualKawaseBlur.h"
 #include "ursDualKawaseBlur_Shaders.h"
 
+#include <Runtime/Renderer/Private/SceneTextureParameters.h>
+#include <Runtime/Renderer/Private/PostProcess/PostProcessBloomSetup.h>
+#include <Runtime/Renderer/Private/PostProcess/PostProcessDownsample.h>
+#include <Runtime/Renderer/Private/PostProcess/PostProcessEyeAdaptation.h>
+#include <Runtime/Renderer/Private/PostProcess/PostProcessHistogram.h>
+#include <Runtime/Renderer/Private/PostProcess/PostProcessLocalExposure.h>
+
+DECLARE_GPU_STAT(ursDkBlur);
 DECLARE_GPU_STAT(ursDkBlur_Blur);
-DECLARE_GPU_STAT(ursDkBlur_RenderScreen);
+DECLARE_GPU_STAT(ursDkBlur_BlurSampling);
+DECLARE_GPU_STAT(ursDkBlur_RenderToScreen);
 DECLARE_GPU_STAT(ursDkBlur_CopyToScreen);
+
+DECLARE_GPU_STAT(ursDkBlur_ProfileUnrealBloomBlur);
 
 #if 0
 #pragma mark --- FursDualKawaseBlurSceneViewExt-Impl ---
@@ -112,7 +123,9 @@ FursDualKawaseBlurSceneViewExt::PrePostProcessPass_RenderThread(FRDGBuilder& Gra
 {
 	Super::PrePostProcessPass_RenderThread(GraphBuilder, View, Inputs);
 
-	execute(GraphBuilder, View);
+	//execute(GraphBuilder, View);
+	profileCompareToUnreal(GraphBuilder, View);
+	//profileUnrealBloomBlur(GraphBuilder, View);
 }
 
 void
@@ -144,29 +157,26 @@ FursDualKawaseBlurSceneViewExt::execute(FRDGBuilder& GraphBuilder, const FSceneV
 	if (!configs.isExecuteBlur)
 		return;
 
+	auto& rdgBuilder = GraphBuilder;
+	URS_GPU_PROFILE_SCOPE(GraphBuilder, ursDkBlur);
+
 	const auto&				viewInfo = ursSceneViewUtil::getViewInfo_Unsafe(View);
 	const FRDGTextureRef&	inputTex = viewInfo.GetSceneTextures().Color.Target;
 
 	pipelineParams.sceneView = &View;
 	pipelineParams.inputTex = inputTex;
 
-	auto& rdgBuilder = GraphBuilder;
 	auto* passBlur = addBlurPass(rdgBuilder, pipelineParams);
-
-	if (passBlur && configs.isCopyToScreen)
+	if (passBlur && configs.isRenderToScreen)
 	{
-		RDG_GPU_STAT_SCOPE(rdgBuilder, ursDkBlur_CopyToScreen);
-
-		FRHICopyTextureInfo copyInfo = {};
-		copyInfo.Size = FIntVector {inputTex->Desc.Extent.X, inputTex->Desc.Extent.Y, 1 };
-		AddCopyTexturePass(rdgBuilder, pipelineParams.blurredTex, inputTex, copyInfo);
+		addRenderToScreenPass(rdgBuilder, pipelineParams);
 	}
 }
 
 FRDGPassRef
 FursDualKawaseBlurSceneViewExt::addBlurPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams)
 {
-	RDG_GPU_STAT_SCOPE(rdgBuilder, ursDkBlur_Blur);
+	URS_GPU_PROFILE_SCOPE(rdgBuilder, ursDkBlur_Blur);
 
 	auto& configs			= pipelineParams.configs;
 	/*if (!configs.isValid())
@@ -205,9 +215,7 @@ FursDualKawaseBlurSceneViewExt::addBlurPass(FRDGBuilder& rdgBuilder, PipelinePar
 FRDGPassRef 
 FursDualKawaseBlurSceneViewExt::_addBlurSamplingPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams)
 {
-
-	//DECLARE_GPU_STAT(ursSimpleParticle_RenderParticle);
-	//RDG_GPU_STAT_SCOPE(rdgBuilder, ursSimpleParticle_RenderParticle);
+	URS_GPU_PROFILE_SCOPE(rdgBuilder, ursDkBlur_BlurSampling);
 
 	// TODO: a scoped stat
 	//RDG_CSV_STAT_EXCLUSIVE_SCOPE(GraphBuilder, RenderBasePass);
@@ -219,23 +227,24 @@ FursDualKawaseBlurSceneViewExt::_addBlurSamplingPass(FRDGBuilder& rdgBuilder, Pi
 	TShaderMapRef<FursDualKawaseBlur_DownSampling_CS>	cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	auto* params = rdgBuilder.AllocParameters<FursDualKawaseBlur_CS::FParameters>();	// 
 	cs->createShaderParams(params, rdgBuilder, samplingPassParams);
-	
+
 	auto iterIdx = samplingPassParams.iterIndex;
 	auto srcTexExtent = samplingPassParams.srcTex->Desc.Extent;
 	auto dstTexExtent = samplingPassParams.dstTex->Desc.Extent;
 
+	auto passFlags = ERDGPassFlags::Compute | ERDGPassFlags::NeverCull;
 	FRDGPassRef pass = nullptr;
 	//auto& cs = samplingPassParams.isDownSampling ? csDown : csUp;
 	if (samplingPassParams.isDownSampling)
 	{
 		pass = FComputeShaderUtils::AddPass(rdgBuilder, RDG_EVENT_NAME("ursDKBlur_DownSamplingPass_%d [%d, %d] -> [%d, %d]", iterIdx, srcTexExtent.X, srcTexExtent.Y, dstTexExtent.X, dstTexExtent.Y)
-			, cs, params, FComputeShaderUtils::GetGroupCount(dstTexExtent, configs.numThreads));
+			, passFlags, cs, params, FComputeShaderUtils::GetGroupCount(dstTexExtent, configs.numThreads));
 	}
 	else
 	{
 		TShaderMapRef<FursDualKawaseBlur_UpSampling_CS>		csUp(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 		pass = FComputeShaderUtils::AddPass(rdgBuilder, RDG_EVENT_NAME("ursDKBlur_UpSamplingPass_%d [%d, %d] -> [%d, %d]", iterIdx, srcTexExtent.X, srcTexExtent.Y, dstTexExtent.X, dstTexExtent.Y)
-			, csUp, params, FComputeShaderUtils::GetGroupCount(dstTexExtent, configs.numThreads));
+			, passFlags, csUp, params, FComputeShaderUtils::GetGroupCount(dstTexExtent, configs.numThreads));
 	}
 
 	#if 0
@@ -248,19 +257,183 @@ FursDualKawaseBlurSceneViewExt::_addBlurSamplingPass(FRDGBuilder& rdgBuilder, Pi
 	return pass;
 }
 
-FRDGPassRef
-FursDualKawaseBlurSceneViewExt::addRenderScreenPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams)
+FRDGPassRef 
+FursDualKawaseBlurSceneViewExt::addCopyToScreenPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams)
 {
-	RDG_GPU_STAT_SCOPE(rdgBuilder, ursDkBlur_RenderScreen);
+	URS_GPU_PROFILE_SCOPE(rdgBuilder, ursDkBlur_CopyToScreen);
 
-	// TODO: a scoped stat
-	//GraphBuilder.SetCommandListStat(GET_STATID(STAT_CLM_BasePass));
-	//RenderBasePassInternal(GraphBuilder, InViews, SceneTextures, BasePassRenderTargets, BasePassDepthStencilAccess, ForwardBasePassTextures, DBufferTextures, bDoParallelBasePass, bRenderLightmapDensity, InstanceCullingManager, bNaniteEnabled, NaniteBasePassShadingCommands, NaniteRasterResults);
-	//GraphBuilder.SetCommandListStat(GET_STATID(STAT_CLM_AfterBasePass));
+	auto& inputTex = pipelineParams.inputTex;
 
-	// AddDrawScreenPass
+	FRHICopyTextureInfo copyInfo = {};
+	copyInfo.Size = FIntVector {inputTex->Desc.Extent.X, inputTex->Desc.Extent.Y, 1 };
+	AddCopyTexturePass(rdgBuilder, pipelineParams.blurredTex, inputTex, copyInfo);
 
 	return nullptr;
 }
+
+FRDGPassRef
+FursDualKawaseBlurSceneViewExt::addRenderToScreenPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams)
+{
+	URS_GPU_PROFILE_SCOPE(rdgBuilder, ursDkBlur_RenderToScreen);
+
+	const auto&	viewInfo = ursSceneViewUtil::getViewInfo_Unsafe(*pipelineParams.sceneView);
+
+	auto& inputTex	= pipelineParams.blurredTex;
+	auto& outputTex = pipelineParams.inputTex;
+
+	const FScreenPassTextureViewport inputViewport(inputTex);
+	const FScreenPassTextureViewport outputViewport(outputTex);
+
+	auto srcTexExtent = inputTex->Desc.Extent;
+	auto dstTexExtent = outputTex->Desc.Extent;
+
+	TShaderMapRef<FScreenPassVS>			vs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	TShaderMapRef<FursDualKawaseBlur_PS>	ps(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+
+	auto* shaderParams = rdgBuilder.AllocParameters<FursDualKawaseBlur_PS::FParameters>();
+	shaderParams->RenderTargets[0]	= FRenderTargetBinding(outputTex, ERenderTargetLoadAction::ELoad);
+	shaderParams->m_srcTex			= rdgBuilder.CreateSRV(inputTex);
+	shaderParams->m_srcTexSampler	= TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp>::GetRHI();
+
+	AddDrawScreenPass(rdgBuilder
+		, RDG_EVENT_NAME("ursDKBlur_RenderToScreenPass [%d, %d] -> [%d, %d]", srcTexExtent.X, srcTexExtent.Y, dstTexExtent.X, dstTexExtent.Y)
+		, viewInfo, outputViewport, inputViewport, vs, ps, shaderParams
+	);
+
+	return nullptr;
+}
+
+void 
+FursDualKawaseBlurSceneViewExt::profileCompareToUnreal(FRDGBuilder& GraphBuilder, const FSceneView& View)
+{
+	auto& pipelineParams	= _pipelineParams;
+	auto& configs			= pipelineParams.configs;
+	if (!configs.isExecuteBlur)
+		return;
+
+	auto& rdgBuilder = GraphBuilder;
+	URS_GPU_PROFILE_SCOPE(GraphBuilder, ursDkBlur);
+
+	const auto&				viewInfo = ursSceneViewUtil::getViewInfo_Unsafe(View);
+	const FRDGTextureRef&	inputTex = viewInfo.GetSceneTextures().Color.Target;
+
+	pipelineParams.sceneView = &View;
+	pipelineParams.inputTex = inputTex;
+
+	FRDGTextureRef halfResTex = nullptr;
+	{
+		FursDualKawaseBlurParams_SamplingPass& samplingPassParams = pipelineParams.samplingPassParams;
+		samplingPassParams.create(nullptr, 0, 1.0f, inputTex, true);
+		_addBlurSamplingPass(rdgBuilder, pipelineParams);
+		halfResTex = samplingPassParams.dstTex;
+	}
+
+	{
+		pipelineParams.inputTex = halfResTex;
+		auto* passBlur = addBlurPass(rdgBuilder, pipelineParams);
+		if (passBlur && configs.isRenderToScreen)
+		//if (configs.isRenderToScreen)
+		{
+			pipelineParams.inputTex = inputTex;
+			addRenderToScreenPass(rdgBuilder, pipelineParams);
+		}
+	}
+}
+
+void 
+FursDualKawaseBlurSceneViewExt::profileUnrealBloomBlur(FRDGBuilder& GraphBuilder, const FSceneView& View)
+{
+	#if 0
+	URS_GPU_PROFILE_SCOPE(GraphBuilder, ursDkBlur_ProfileUnrealBloomBlur);
+
+	const auto&	viewInfo = ursSceneViewUtil::getViewInfo_Unsafe(View);
+
+	const FEngineShowFlags& EngineShowFlags = View.Family->EngineShowFlags;
+	bool CVarBloomApplyLocalExposure = true;
+	EDownsampleQuality CVarDownsampleChainQuality = EDownsampleQuality::High;		// TEXT(" 1: high quality (default)\n"),
+
+	const FScreenPassTexture BlackDummy(GSystemTextures.GetBlackDummy(GraphBuilder));
+	FRDGTextureRef LocalExposureBlurredLogLumTexture = BlackDummy.Texture;
+
+	FRDGTextureRef LocalExposureTexture = nullptr;
+
+	FScreenPassTexture			SceneColor(viewInfo.GetSceneTextures().Color.Target, viewInfo.ViewRect);
+	FScreenPassTextureSlice		inputTex = FScreenPassTextureSlice::CreateFromScreenPassTexture(GraphBuilder, SceneColor);;
+
+	FSceneDownsampleChain BloomDownsampleChain;
+
+	FLocalExposureParameters LocalExposureParameters;
+	const FEyeAdaptationParameters EyeAdaptationParameters = GetEyeAdaptationParameters(viewInfo);
+
+	FScreenPassTexture Bloom;
+
+	{
+		//FScreenPassTextureSlice LocalExposureSceneColor = bProcessEighthResolution ? EighthResSceneColor : (bProcessQuarterResolution ? QuarterResSceneColor : HalfResSceneColor);
+		FScreenPassTextureSlice LocalExposureSceneColor = inputTex;
+
+		const bool bLocalExposureEnabled =
+			EngineShowFlags.VisualizeLocalExposure ||
+			!FMath::IsNearlyEqual(View.FinalPostProcessSettings.LocalExposureHighlightContrastScale, 1.0f) ||
+			!FMath::IsNearlyEqual(View.FinalPostProcessSettings.LocalExposureShadowContrastScale, 1.0f) ||
+			View.FinalPostProcessSettings.LocalExposureHighlightContrastCurve ||
+			View.FinalPostProcessSettings.LocalExposureShadowContrastCurve ||
+			!FMath::IsNearlyEqual(View.FinalPostProcessSettings.LocalExposureDetailStrength, 1.0f);
+
+		if (bLocalExposureEnabled)
+		{
+			LocalExposureTexture = AddLocalExposurePass(
+				GraphBuilder, viewInfo,
+				EyeAdaptationParameters,
+				LocalExposureSceneColor);
+		}
+
+		LocalExposureParameters = GetLocalExposureParameters(viewInfo, LocalExposureSceneColor.ViewRect.Size(), EyeAdaptationParameters);
+	}
+
+	{
+		const bool bBloomSetupRequiredEnabled = View.FinalPostProcessSettings.BloomThreshold > -1.0f || LocalExposureTexture != nullptr;
+
+		//FScreenPassTextureSlice DownsampleInput = bProcessEighthResolution ? EighthResSceneColor : (bProcessQuarterResolution ? QuarterResSceneColor : HalfResSceneColor);
+
+		FRDGBufferRef LastEyeAdaptationBuffer = GetEyeAdaptationBuffer(GraphBuilder, viewInfo);
+		FRDGBufferRef EyeAdaptationBuffer = LastEyeAdaptationBuffer;
+
+		const FSceneDownsampleChain* LensFlareSceneDownsampleChain = nullptr;
+
+		{
+			//FScreenPassTextureSlice DownsampleInput = bProcessEighthResolution ? EighthResSceneColor : (bProcessQuarterResolution ? QuarterResSceneColor : HalfResSceneColor);
+			FScreenPassTextureSlice DownsampleInput = inputTex;
+
+			if (bBloomSetupRequiredEnabled)
+			{
+				const float BloomThreshold = View.FinalPostProcessSettings.BloomThreshold;
+
+				FBloomSetupInputs SetupPassInputs;
+				SetupPassInputs.SceneColor						= DownsampleInput;
+				SetupPassInputs.EyeAdaptationBuffer				= EyeAdaptationBuffer;
+				SetupPassInputs.EyeAdaptationParameters			= &EyeAdaptationParameters;
+				SetupPassInputs.LocalExposureParameters			= &LocalExposureParameters;
+				SetupPassInputs.LocalExposureTexture			= CVarBloomApplyLocalExposure ? LocalExposureTexture : nullptr;
+				SetupPassInputs.BlurredLogLuminanceTexture		= LocalExposureBlurredLogLumTexture;
+				SetupPassInputs.Threshold						= BloomThreshold;
+
+				DownsampleInput = FScreenPassTextureSlice::CreateFromScreenPassTexture(GraphBuilder, AddBloomSetupPass(GraphBuilder, viewInfo, SetupPassInputs));
+			}
+
+			const bool bLogLumaInAlpha = false;
+			BloomDownsampleChain.Init(GraphBuilder, viewInfo, EyeAdaptationParameters, DownsampleInput, CVarDownsampleChainQuality, bLogLumaInAlpha);
+
+			LensFlareSceneDownsampleChain = &BloomDownsampleChain;
+		}
+
+		Bloom = AddGaussianBloomPasses(GraphBuilder, viewInfo, LensFlareSceneDownsampleChain);
+	}
+
+	#else
+	URS_ASSERT(false, "cannot use non export fn");
+	#endif // 0
+}
+
+
 
 #endif

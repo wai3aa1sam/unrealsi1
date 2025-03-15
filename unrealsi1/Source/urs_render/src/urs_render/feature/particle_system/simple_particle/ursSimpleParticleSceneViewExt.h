@@ -53,6 +53,9 @@ public:
 protected:
 	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const override { return true; }
 
+protected:
+	void execute(FRDGBuilder& GraphBuilder, const FSceneView& View);
+
 private:
 	void addSimulateParticlePass(FRDGBuilder& rdgBuilder, PassParams* passParams);
 	void addRenderParticlePass(FRDGBuilder& rdgBuilder, PassParams* passParams);

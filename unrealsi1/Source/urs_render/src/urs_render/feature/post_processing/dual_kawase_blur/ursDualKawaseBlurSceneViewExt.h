@@ -55,10 +55,14 @@ protected:
 private:
 	void execute(FRDGBuilder& GraphBuilder, const FSceneView& View);
 
+	void profileCompareToUnreal(FRDGBuilder& GraphBuilder, const FSceneView& View);
+	void profileUnrealBloomBlur(FRDGBuilder& GraphBuilder, const FSceneView& View);
+
 private:
 	FRDGPassRef addBlurPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams);
 	FRDGPassRef _addBlurSamplingPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams);
-	FRDGPassRef addRenderScreenPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams);
+	FRDGPassRef addRenderToScreenPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams);
+	FRDGPassRef addCopyToScreenPass(FRDGBuilder& rdgBuilder, PipelineParams& pipelineParams);
 
 private:
 	TWeakObjectPtr<AursDualKawaseBlur> _simpleParticle = nullptr;
