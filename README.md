@@ -2,12 +2,13 @@
 unrealsi1 is a Unreal technical demo, currently focus on the rendering part. \
 Also providing examples to use Unreal properly.
 
-demo video:\
-<a href="https://www.youtube.com/watch?v=i9cehZSzaGU" target="_blank">
- <img src="doc/screenshot/shader/vfx/simple_particle/simple_particle.jpg" alt="unrealsi1_demo_video" width="512" height="256" />
+demo video: \
+<a href="https://youtu.be/C87Qk5dcq7Y" target="_blank">
+<video loop width="400" height="300" src="doc/screenshot/render/feature/post_processing/dual_kawase_blur/dual_kawase_blur.mp4" > 
+</video>
 </a>
 
-\
+
 **Table of Contents**
 - Demos
 - Features
@@ -15,7 +16,7 @@ demo video:\
 - Roadmap
 - Requirement
 - Build
-- Usage
+- How to play
 - References
 
 ## Requirement
@@ -25,20 +26,28 @@ demo video:\
 
 ## Demos
 
+### Render Features (C++ only, RDG, HLSL)
+- dual kawase blur ([detail](doc/reference/render/feature/post_processing/dual_kawase_blur.md))
+
+| original | 3 * 2 down/up sample | 4*2 down/up sample |
+|---|---|---|
+|![](doc/screenshot/render/feature/post_processing/dual_kawase_blur/dkBlur_original.png)|![](doc/screenshot/render/feature/post_processing/dual_kawase_blur/dkBlur_3+3.png)|![](doc/screenshot/render/feature/post_processing/dual_kawase_blur/dkBlur_4+4.png)|
+
+
+- simple particle system
+
+| particles collision | debug with RenderDoc |
+|---|---|
+|![](doc/screenshot/render/feature/particle_system/simple_particle/simple_particle.jpg)|![](doc/screenshot/render/feature/particle_system/simple_particle/simple_particle_renderdoc.jpg)|
+
 ### Material Vfx (HLSL)
 
 | dissovle | force field | simple water |
 |---|---|---|
-|![](doc/screenshot/material/vfx/dissolve.jpg)|![](doc/screenshot/material/vfx/force_field.jpg)|![](doc/screenshot/material/vfx/simple_water.jpg)
+|![](doc/screenshot/render/material/vfx/dissolve.jpg)|![](doc/screenshot/render/material/vfx/force_field.jpg)|![](doc/screenshot/render/material/vfx/simple_water.jpg)
 | world scanner | --- | --- |
-|![](doc/screenshot/material/vfx/world_scanner.jpg)
+|![](doc/screenshot/render/material/vfx/world_scanner.jpg)
 
-
-
-### Simple Particle System (Render Dependency Graph + Compute Shader)
-| particles collision | debug with RenderDoc |
-|---|---|
-|![](doc/screenshot/shader/vfx/simple_particle/simple_particle.jpg)|![](doc/screenshot/shader/vfx/simple_particle/simple_particle_renderdoc.jpg)|
 
 ## Features
 
@@ -48,7 +57,7 @@ demo video:\
 
 ## Technical Highlights
 
-- custom rendering pass by using Render Dependency Graph(RDG) and Compute Shader
+- custom rendering pass by using Render Dependency Graph (RDG) and Compute Shader
 - personal HLSL library by using unreal HLSL library instead of material nodes
 
 
@@ -76,10 +85,10 @@ demo video:\
 
 - open unrealsi1/unrealsi1.uproject
 
-## Usage
+## How to play
 
-- open unrealsi1/demo/test/vfx for material vfx
-- open unrealsi1/demo/test/shader/vfx for shader vfx
+- open unrealsi1/demo/test/render/feature for RDG feature
+- open unrealsi1/demo/test/render/materual/vfx for material vfx
 
 ## References
 
