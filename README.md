@@ -4,10 +4,8 @@ Also providing examples to use Unreal properly.
 
 demo video: \
 <a href="https://youtu.be/C87Qk5dcq7Y" target="_blank">
-<video loop width="400" height="300" src="doc/screenshot/render/feature/post_processing/dual_kawase_blur/dual_kawase_blur.mp4" > 
-</video>
+ <img src="doc/screenshot/render/feature/post_processing/dual_kawase_blur/dkBlur_original.png" alt="unrealsi1_demo_video" width="512" height="256" />
 </a>
-
 
 **Table of Contents**
 - Demos
