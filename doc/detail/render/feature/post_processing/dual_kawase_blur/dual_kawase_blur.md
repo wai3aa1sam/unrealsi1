@@ -21,7 +21,7 @@
 
 ### unreal guassian blur
 - toal passes: 18 (5 down sampling + 1 setup + 6 * 2 up gaussian x, y sampling passes)
-- used 0.14ms us (0.02ms + 0.02ms + 0.10ms)
+- used 0.14ms (0.02ms + 0.02ms + 0.10ms)
 - profile result
 <img src="photo/unreal_blur_profile.png" alt="drawing" width=""/>
 
