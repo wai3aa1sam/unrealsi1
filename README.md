@@ -25,7 +25,7 @@ demo video: \
 ## Demos
 
 ### Render Features (C++ only, RDG, HLSL)
-- dual kawase blur ([detail](doc/reference/render/feature/post_processing/dual_kawase_blur.md))
+- dual kawase blur ([performance detail](doc/detail/render/feature/post_processing/dual_kawase_blur/dual_kawase_blur.md))
 
 | original | 3 * 2 down/up sample | 4*2 down/up sample |
 |---|---|---|
