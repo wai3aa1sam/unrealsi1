@@ -1,4 +1,4 @@
-# dual kawase blur
+# Dual Kawase Blur
 - n + n down/up sampling blur passes
 - 2x speedup compare to unreal blur impl
 - faster for bloom if up-sample until 1/2 resolution, total n + (n - 1) passes
@@ -21,25 +21,20 @@
 
 ### unreal guassian blur
 - toal passes: 18 (5 down sampling + 1 setup + 6 * 2 up gaussian x, y sampling passes)
-- used 0.14ms (0.02ms + 0.02ms + 0.10ms)
-- profile result
-<img src="photo/unreal_blur_profile.png" alt="drawing" width=""/>
-
-- output
-<img src="photo/unreal_blur_result_renderdoc.png" alt="drawing" width=""/>
+- result: used 0.14ms (0.02ms + 0.02ms + 0.10ms)
+    | profile | output |
+    |---|---| 
+    |![](photo/unreal_blur_profile.png)|![](photo/unreal_blur_result_renderdoc.png)|
 
 ### dual kawase blur
 - toal passes: 6 / 8 (3 + 3 or 4 + 4 down/up sampling passes)
-- 3 + 3 used 0.07ms (2x speedup), 3 + 3 used 0.08ms (1.75x speedup)
-- 3 + 3 passes profile result: 0.07ms (2x speedup)
-<img src="photo/dkblur_3+3_profile.png" alt="drawing" width=""/>
+- 3 + 3 passes result: used 0.07ms (2x speedup)
+    | profile | output |
+    |---|---| 
+    |![](photo/dkblur_3+3_profile.png)|![](photo/dkblur_3+3_result.png)|
 
-- 3 + 3 passes profile output
-<img src="photo/dkblur_3+3_result.png" alt="drawing" width=""/>
 
-- 4 + 4 passes profile result: 0.08ms (1.75x speedup)
-<img src="photo/dkblur_4+4_profile.png" alt="drawing" width=""/>
-
-- 4 + 4 passes profile output
-<img src="photo/dkblur_4+4_result.png" alt="drawing" width=""/>
-
+- 4 + 4 passes result: used 0.08ms (1.75x speedup)
+    | profile | output |
+    |---|---| 
+    |![](photo/dkblur_4+4_profile.png)|![](photo/dkblur_4+4_result.png)|
